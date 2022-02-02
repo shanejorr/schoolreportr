@@ -15,6 +15,9 @@ Config/testthat/edition: 3
 Imports: 
     educationdata,
     dplyr,
-    tidycensus
+    tidycensus,
+    stringr,
+    tidyr,
+    magrittr
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues

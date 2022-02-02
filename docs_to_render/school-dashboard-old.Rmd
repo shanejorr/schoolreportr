@@ -1,0 +1,35 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    
+params:
+  district_lea_id: '1'
+  year: 2019
+  
+---
+
+```{r setup, include=FALSE, results = 'hide'}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+
+nces_number <- '051068001566' # north little rock
+
+district_leaid <- params$district_lea_id # school_district_numbers()$district_lea[[1]]
+
+year <- 2019
+
+```
+
+```{r loadData, results = 'hide', include = FALSE}
+
+
+
+```
+
+<script>
+document.querySelector(".navbar-header > span.navbar-brand").innerHTML = "`r dashboard_title`";
+</script> 
