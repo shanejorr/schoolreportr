@@ -18,6 +18,8 @@ Imports:
     tidycensus,
     stringr,
     tidyr,
-    magrittr
+    magrittr,
+    tigris,
+    forcats
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues
