@@ -1,4 +1,12 @@
-get_eddata_topic_subtopic <- function(nces_number, years, source = c('ccd', 'crdc', 'edfacts'), topic, subtopic= NULL, grades = FALSE) {
+#' Base function to import data from the educationdata api
+#'
+#'
+#' @keywords internal
+get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopic= NULL, grades = FALSE) {
+
+  source_values <- c('ccd', 'crdc', 'edfacts')
+
+  if (!source %in% source_values) stop(glue::glue("`source` must be either {paste0(source_values, collapse = ", ", )}"))
 
   years <- switch(
     source,
@@ -66,8 +74,6 @@ get_ccd_directory <- function(nces_number, years) {
 #' @keywords internal
 get_crdc_school_enrollment_lep <- function(nces_number, years) {
 
-  message("Getting CRDC LEP data...")
-
   get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "enrollment", subtopic = list("lep", "sex")) %>%
     dplyr::group_by(ncessch, year, lep) %>%
     dplyr::summarize(enrollment = sum(enrollment_crdc, na.rm = T), .groups = 'drop') %>%
@@ -85,12 +91,10 @@ get_crdc_school_enrollment_lep <- function(nces_number, years) {
 #' Returns the percentage of students taking the ACT/ SAT by race
 #'
 #' @param crdc_enrollment_by_race A data set of  CRDC enrollment by race. Needed so we can calculate percentages
-#'    Created with \code{get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')}
+#'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
 #' @keywords internal
 get_crdc_school_test_participation_percentages <- function(nces_number, years, crdc_enrollment_by_race) {
-
-  message("Getting CRDC ACT / SAT participation data...")
 
   # number of ACT / SAT takers by race
   get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "sat-act-participation", subtopic = c("race", "sex")) %>%
@@ -106,12 +110,10 @@ get_crdc_school_test_participation_percentages <- function(nces_number, years, c
 #' Percentage of IB / AP takers by race
 #'
 #' @param crdc_enrollment_by_race A data set of  CRDC enrollment by race. Needed so we can calculate percentages
-#'    Created with \code{get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')}
+#'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
 #' @keywords internal
 get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race) {
-
-  message("Getting CRDC IB / AP data participation data...")
 
   # number of ACT / SAT takers by race
   get_eddata_topic_subtopic(nces_number, years, 'crdc', "ap-ib-enrollment", c("race", "sex")) %>%
@@ -127,7 +129,7 @@ get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race) {
 #' Percentage of IB / AP takers by race
 #'
 #' @param crdc_enrollment_by_race A data set of  CRDC enrollment by race. Needed so we can calculate percentages
-#'    Created with \code{get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')}
+#'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
 #' @keywords internal
 get_edfacts_gradrates <- function(nces_number, years) {
@@ -148,7 +150,7 @@ get_edfacts_gradrates <- function(nces_number, years) {
 convert_to_na <- function(.data, cols) {
 
   .data %>%
-    dplyr::mutate(dplyr::across(all_of(cols), ~ifelse(.x < 0, NA_real_, .x)))
+    dplyr::mutate(dplyr::across(dplyr::all_of(cols), ~ifelse(.x < 0, NA_real_, .x)))
 
 }
 
@@ -173,62 +175,105 @@ clean_crdc <- function(.data, metric_colname) {
 
 }
 
-# directory
-get_ccd_directory(nces_number, 2018)
-
-# enrollment by race
-get_eddata_topic_subtopic(nces_number, 2018, source = 'ccd', topic = 'enrollment', subtopic = list('race'), grade = TRUE) %>%
-  select(year, ncessch, race,enrollment)
-
-# enrollment by lep
-get_crdc_school_enrollment_lep(nces_number, years)
-
-# crdc enrollment by race
-# used to calculate percentages in other metrics
-crdc_enrollment_by_race <- get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "enrollment", subtopic = c("race", "sex")) %>%
-    clean_crdc('enrollment_crdc')
-
-# SAT / ACT test participation percentageg
-get_crdc_school_test_participation_percentages(nces_number, years, crdc_enrollment_by_race)
-
-
-# percentage enrollment in AP / IP
-get_crdc_school_ib_ap(nces_number, years, crdc_enrollment_by_race)
-
-# state assessments by grade and race
-assessments <- get_eddata_topic_subtopic(nces_number, 2018, source = 'edfacts', topic = "assessments", subtopic = list("race"), grades = 99) %>%
-  dplyr::select(ncessch, year, school_name, race, contains('_test_'))
-
-# graduation rtes
-get_edfacts_gradrates(nces_number, 2018)
-
-
-
-
-#' Get all educationdata data
+#' Get education data
 #'
-#' Single function that calls all educationdata functions and returns all the data in a single list
+#' Imports multiple pieces of data from the Urban Institute's educationdata API at once. Users can specify
+#' the needed data sets and all data sets will be returned in a single list.
 #'
-#' @keywords internal
-get_all_educationdata <- function(nces_number, years) {
+#' @param nces_number The school's NCES number, as a string.
+#' @param years The years from which you want to retrieve data. No data will be returned if data
+#'      is not available for the year.
+#' @param data_sources The data sources to retrieve. Can be one of the following:
+#'      enrollment race', 'enrollment lep', 'test participation', 'IB AP enrollment', 'state assessments'
+#'
+#' @returns A list with each element containing a data frame with school data. The list is named,
+#'      which identifies the data contained in the list element.
+#'
+#' @export
+get_all_educationdata <- function(nces_number, years, data_sources) {
+
+  data_source_options <- c(
+    'enrollment race', 'enrollment lep', 'test participation', 'IB AP enrollment', 'state assessments'
+  )
+
+  # make sure that all input data_source items are valid and throw error if one is not
+  wrong_input <- setdiff(data_sources, data_source_options)
+
+  if (length(wrong_input) > 0) stop(
+    glue::glue("At least one of your `data_source` items are incorrect. `data_source` must be one of {paste0(data_source_options, collapse = ', ')}")
+  )
 
   source_suffix <- "/nvia Education Data Portal v. 0.14.0, Urban Institute."
 
-  school_directory <- list(data = get_ccd_school_directory(nces_number, year),
-                           source = glue::glue("Common Core of Data{source_suffix}"))
+  school_data <- list()
 
-  school_enrollment_race <- list(data = get_ccd_school_enrollment_race(nces_number, years),
-                                 source = glue::glue("Common Core of Data{source_suffix}"))
+  # always supply directory information
+  message("Getting school directory information ...")
 
-  school_enrollment_lep <- list(data = get_crdc_school_enrollment_lep(nces_number, years),
-                                source = glue::glue("The Civil Rights Data Collection{source_suffix}"))
+  school_data[['directory']] <- list(
+    data = get_ccd_directory(nces_number, max(years)),
+    source = glue::glue("Common Core of Data{source_suffix}")
+  )
 
-  school_test_takers <- list(data = get_crdc_school_test_participation_percentages(nces_number, years),
-                             source = glue::glue("The Civil Rights Data Collection{source_suffix}"))
+  # need crdc enrollment by race to calculate percentage
+  # we are not going to write it out, so we don't need it in the list containing all information
+  if ('test participation' %in% data_sources | 'IB AP enrollment' %in% data_sources) {
+    crdc_enrollment_by_race <- get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "enrollment", subtopic = c("race", "sex")) %>%
+      clean_crdc('enrollment_crdc')
+  }
 
-  school_staff <- list(data = get_crdc_school_staff(nces_number, years),
-                       source = glue::glue("The Civil Rights Data Collection{source_suffix}"))
 
-  state_assessment <- list(data = get_edfacts_state_assessments(nces_number, year),
-                           source = glue::glue("EDFacts{source_suffix}"))
+  if ('enrollment race' %in% data_sources) {
+    message("Getting CCD enrollment by rase data...")
+    school_data[['enrollment_race']] <- list(
+      data = get_eddata_topic_subtopic(nces_number, years, source = 'ccd', topic = 'enrollment', subtopic = list('race'), grade = TRUE) %>%
+        dplyr::select(year, ncessch, race,enrollment),
+      source = glue::glue("Common Core of Data{source_suffix}")
+    )
+  }
+
+  if ('enrollment lep' %in% data_sources) {
+    message("Getting CRDC LEP data...")
+    school_data[['enrollment_lep']] <- list(
+      data = get_crdc_school_enrollment_lep(nces_number, years),
+      source = glue::glue("The Civil Rights Data Collection{source_suffix}")
+    )
+
+  }
+
+  if ('test participation' %in% data_sources) {
+    message("Getting CRDC ACT / SAT participation data...")
+    school_data[['test_participation']] <- list(
+      data = get_crdc_school_test_participation_percentages(nces_number, years, crdc_enrollment_by_race),
+      source = glue::glue("The Civil Rights Data Collection{source_suffix}")
+    )
+  }
+
+  if ('IB AP enrollment' %in% data_sources) {
+    message("Getting CRDC IB / AP data participation data...")
+    school_data[['ib_ap_enrollment']] <- list(
+      data = get_crdc_school_test_participation_percentages(nces_number, years, crdc_enrollment_by_race),
+      source = glue::glue("The Civil Rights Data Collection{source_suffix}")
+    )
+  }
+
+  if ('state assessments' %in% data_sources) {
+    message("Getting EDFacts state assessment data...")
+    school_data[['state_assessments']] <- list(
+      data = get_eddata_topic_subtopic(nces_number, years, source = 'edfacts', topic = "assessments", subtopic = list("race"), grades = 99) %>%
+        dplyr::select(ncessch, year, school_name, race, contains('_test_')),
+      source = glue::glue("EDFacts{source_suffix}")
+    )
+  }
+
+  if ('grad rates' %in% data_sources) {
+    message("Getting EDFacts graduation rate data...")
+    school_data[['grad_rates']] <- list(
+      data = get_edfacts_gradrates(nces_number, years),
+      source = glue::glue("EDFacts{source_suffix}")
+    )
+  }
+
+  return(school_data)
+
 }

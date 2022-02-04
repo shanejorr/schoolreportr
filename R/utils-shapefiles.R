@@ -12,4 +12,4 @@ shapefiles_district <- function(state, leaid_number, year) {
 }
 
 
-tigris::school_districts(state = 'TX', cb = FALSE, year = 2019)
+#tigris::school_districts(state = 'TX', cb = FALSE, year = 2019)
