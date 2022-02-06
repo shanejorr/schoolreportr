@@ -18,14 +18,15 @@ knitr::opts_chunk$set(
 
 nces_number <- '051068001566' # north little rock
 
-district_leaid <- params$district_lea_id # school_district_numbers()$district_lea[[1]]
-
 years <- 2000:2019
-
+devtools::load_all()
 ```
 
 ```{r loadData, results = 'hide', include = FALSE}
 
+data_sources_to_import <- c('enrollment race', 'enrollment lep', 'IB AP enrollment', 'state assessments')
+
+ed_data <- get_all_educationdata(nces_number, years, data_sources_to_import)
 
 
 ```
