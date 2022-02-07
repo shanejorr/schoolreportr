@@ -24,13 +24,95 @@ devtools::load_all()
 
 ```{r loadData, results = 'hide', include = FALSE}
 
-data_sources_to_import <- c('enrollment race', 'enrollment lep', 'IB AP enrollment', 'state assessments')
+data_sources_to_import <- c('enrollment race', 'enrollment lep', 'state assessments')
 
+# get all Urban Institute Education Data Portal API data
 ed_data <- get_all_educationdata(nces_number, years, data_sources_to_import)
 
+school_directory <- ed_data$directory$data %>%
+  dplyr::mutate(dplyr::across(school_name:city_location, ~stringr::str_to_title(.x)))
 
+# get state to extract district and census tract shape files
+state_abb <- school_directory$state_location
+
+# get district shapefile
+district_shapefile <- tigris::school_districts(state = state_abb, cb = FALSE) %>%
+  # filter for district
+  dplyr::filter(GEOID == school_directory$leaid)
+
+dashboard_title <- stringr::str_c(school_directory$school_name, " Landscape Analysis")
+
+yr <- school_directory$year[[1]]
+
+district_year <- glue::glue("{yr} - {yr + 1}")
 ```
 
 <script>
 document.querySelector(".navbar-header > span.navbar-brand").innerHTML = "`r dashboard_title`";
 </script> 
+
+
+District Overview {data-orientation=rows}
+=====================================   
+
+Row
+-----------------------------------------------------------------------
+
+### Grades in School
+
+```{r}
+school_grades <- glue::glue("{school_directory$lowest_grade_offered} - {school_directory$highest_grade_offered}")
+
+flexdashboard::valueBox(school_grades, icon = "fa-school")
+```
+
+### School Enrollment<br>`r district_year`
+
+```{r}
+school_enrollment <- school_directory$enrollment[[1]] %>%
+  as.numeric() %>%
+  scales::comma()
+
+flexdashboard::valueBox(school_enrollment, icon = "fa-child")
+```
+
+### FTE Teachers at School<br>`r district_year`
+
+```{r}
+school_teachers <- school_directory$teachers_fte[[1]] %>%
+  as.numeric() %>%
+  scales::comma()
+
+flexdashboard::valueBox(school_teachers, icon = "fa-chalkboard-teacher")
+```
+
+### Free or Reduced Lunch Students<br>`r district_year`
+
+```{r}
+free_reduced_lunch <- school_directory$free_or_reduced_price_lunch[[1]] %>%
+  as.numeric() %>%
+  scales::comma()
+
+perc_free_reduced <- scales::percent(school_directory$perc_free_reduced_lunch[[1]])
+
+free_reduced_lunch <- glue::glue("{free_reduced_lunch} ({perc_free_reduced})")
+
+flexdashboard::valueBox(free_reduced_lunch, icon = "fa-utensils")
+```
+
+Row
+-------------------------------------
+
+### District Map {data-width=700}
+
+```{r include = FALSE}
+# must create the map in a different code chunk than the chunk it is printed in
+# this is because sf prints a statement in one of the commands and the only
+# way to suppress the statement is the include the header include = FALSE
+# but, this header prevents the map from showing as well
+district_map <- leaflet_district_schools(district_shapefile, school_directory)
+``` 
+
+```{r}
+district_map
+```

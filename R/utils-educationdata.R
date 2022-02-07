@@ -1,8 +1,15 @@
+#' Vector of state FIPS codes
+#'
+#' @keywords internal
+fips_states <- function() {
+  c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
+}
+
 #' Base function to import data from the educationdata api
 #'
 #'
 #' @keywords internal
-get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopic= NULL, grades = FALSE) {
+get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopic= NULL, grades = FALSE, fips_state = fips_states()) {
 
   source_values <- c('ccd', 'crdc', 'edfacts')
 
@@ -19,19 +26,22 @@ get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopi
   if (!grades) {
     filter_list = list(
       year = years,
-      ncessch = nces_number
+      ncessch = nces_number,
+      fips = fips_state
     )
   } else if (grades & (source != 'edfacts')) {
     filter_list = list(
       year = years,
       ncessch = nces_number,
-      grade = 99
+      grade = 99,
+      fips = fips_state
     )
   } else if (grades & (source == 'edfacts')) {
     filter_list = list(
       year = years,
       ncessch = nces_number,
-      grade_edfacts  = 99
+      grade_edfacts  = 99,
+      fips = fips_state
     )
   } else {
     stop("`grades` must be TRUE or FALSE")
@@ -53,17 +63,34 @@ get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopi
 #' General information on  the school.
 #'
 #' @keywords internal
-get_ccd_directory <- function(nces_number, years) {
+get_ccd_directory <- function(nces_number, years, fips_state = fips_states()) {
 
-  get_eddata_topic_subtopic(nces_number, years, 'ccd', 'directory') %>%
+  get_eddata_topic_subtopic(nces_number, years, 'ccd', 'directory', fips_state = fips_state) %>%
     dplyr::select(
       year, ncessch, school_name, leaid, lea_name, street_location:zip_location, latitude, longitude,
-      contains('grades_offered'), teachers_fte, contains('lunch'), enrollment
+      dplyr::contains('grade_offered'), teachers_fte, dplyr::contains('lunch'), enrollment
     ) %>%
     dplyr::mutate(
       free_or_reduced_lunch = free_lunch + reduced_price_lunch,
       perc_free_reduced_lunch = free_or_reduced_lunch / enrollment
     )
+}
+
+#' CCD enrollment by race
+#'
+#'
+#' @keywords internal
+get_ccd_enrollment_race <- function(nces_number, years, fips_state = fips_states()) {
+
+  get_eddata_topic_subtopic(nces_number, years, source = 'ccd', topic = 'enrollment', subtopic = list('race'), grades = TRUE, fips_state = fips_state) %>%
+    dplyr::select(year, ncessch, race,enrollment) %>%
+    dplyr::group_by(year, ncessch) %>%
+    dplyr::mutate(
+      total_enrollment = max(enrollment),
+      perc_enrollment = enrollment / total_enrollment
+    ) %>%
+    dplyr::ungroup()
+
 }
 
 #' Enrollment by limit English proficiency (LEP)
@@ -72,9 +99,9 @@ get_ccd_directory <- function(nces_number, years) {
 #' Uses the "school crdc enrollment lep sex" endpoint
 #'
 #' @keywords internal
-get_crdc_school_enrollment_lep <- function(nces_number, years) {
+get_crdc_school_enrollment_lep <- function(nces_number, years, fips_state = fips_states()) {
 
-  get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "enrollment", subtopic = list("lep", "sex")) %>%
+  get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "enrollment", subtopic = list("lep", "sex"), fips_state = fips_state) %>%
     dplyr::group_by(ncessch, year, lep) %>%
     dplyr::summarize(enrollment = sum(enrollment_crdc, na.rm = T), .groups = 'drop') %>%
     dplyr::mutate(
@@ -94,10 +121,10 @@ get_crdc_school_enrollment_lep <- function(nces_number, years) {
 #'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
 #' @keywords internal
-get_crdc_school_test_participation_percentages <- function(nces_number, years, crdc_enrollment_by_race) {
+get_crdc_school_test_participation_percentages <- function(nces_number, years, crdc_enrollment_by_race, fips_state = fips_states()) {
 
   # number of ACT / SAT takers by race
-  get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "sat-act-participation", subtopic = c("race", "sex")) %>%
+  get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "sat-act-participation", subtopic = c("race", "sex"), fips_state = fips_state) %>%
     clean_crdc('students_SAT_ACT') %>%
     # combine both data sets and calculate percentage
     dplyr::left_join(crdc_enrollment_by_race, by = c('ncessch','year','leaid','race')) %>%
@@ -113,10 +140,10 @@ get_crdc_school_test_participation_percentages <- function(nces_number, years, c
 #'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
 #' @keywords internal
-get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race) {
+get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race, fips_state = fips_states()) {
 
   # number of ACT / SAT takers by race
-  get_eddata_topic_subtopic(nces_number, years, 'crdc', "ap-ib-enrollment", c("race", "sex")) %>%
+  get_eddata_topic_subtopic(nces_number, years, 'crdc', "ap-ib-enrollment", c("race", "sex"), fips_state = fips_state) %>%
     clean_crdc(c('enrl_IB', 'enrl_AP')) %>%
     # combine both data sets and calculate percentage
     dplyr::left_join(crdc_enrollment_by_race, by = c('ncessch','year','leaid','race')) %>%
@@ -126,23 +153,33 @@ get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race) {
 
 }
 
-#' Percentage of IB / AP takers by race
-#'
-#' @param crdc_enrollment_by_race A data set of  CRDC enrollment by race. Needed so we can calculate percentages
-#'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
+#' Graduation Rates
 #'
 #' @keywords internal
-get_edfacts_gradrates <- function(nces_number, years) {
+get_edfacts_gradrates <- function(nces_number, years, fips_state = fips_states()) {
 
   message("Getting graduation rate data...")
 
-  get_eddata_topic_subtopic(nces_number, years, source = 'edfacts', topic = "grad-rates") %>%
+  get_eddata_topic_subtopic(nces_number, years, source = 'edfacts', topic = "grad-rates", fips_state = fips_state) %>%
     dplyr::filter(disability == 'Total', econ_disadvantaged == 'Total', foster_care =='Total', lep == 'All students') %>%
     dplyr::select(year, ncessch, dplyr::starts_with('grad_rate')) %>%
     convert_to_na(c('grad_rate_high', 'grad_rate_low','grad_rate_midpt'))
 
 }
 
+#' State Assessments
+#'
+#' @keywords internal
+get_edfacts_state_assessments <- function(nces_number, years, fips_state = fips_states()) {
+
+  message("Getting assessment data...")
+
+  get_eddata_topic_subtopic(nces_number, 2018, source = 'edfacts', topic = "assessments", grades = 99, subtopic = list('race'), fips_state = fips_state) %>%
+    dplyr::select(ncessch, year, race, dplyr::contains('_test_')) %>%
+    convert_to_na(dplyr::contains('_test_')) %>%
+    dplyr::mutate(dplyr::across(dplyr::contains('_pct_'), ~(.x / 100)))
+
+}
 
 #' Convert educationdata api missing values to NA
 #'
@@ -166,7 +203,6 @@ clean_crdc <- function(.data, metric_colname) {
       sex == 'Total',
       disability == 'Total'
     ) %>%
-    dplyr::filter(race != 'Total') %>%
     dplyr::mutate(
       race = rename_race(race),
       race = forcats::fct_relevel(race, initial_race_order) %>%
@@ -224,10 +260,9 @@ get_all_educationdata <- function(nces_number, years, data_sources) {
 
 
   if ('enrollment race' %in% data_sources) {
-    message("Getting CCD enrollment by rase data...")
+    message("Getting CCD enrollment by race data...")
     school_data[['enrollment_race']] <- list(
-      data = get_eddata_topic_subtopic(nces_number, years, source = 'ccd', topic = 'enrollment', subtopic = list('race'), grade = TRUE) %>%
-        dplyr::select(year, ncessch, race,enrollment),
+      data = get_ccd_enrollment_race(nces_number, years, fips_state = fips_states()),
       source = glue::glue("Common Core of Data{source_suffix}")
     )
   }
@@ -260,8 +295,7 @@ get_all_educationdata <- function(nces_number, years, data_sources) {
   if ('state assessments' %in% data_sources) {
     message("Getting EDFacts state assessment data...")
     school_data[['state_assessments']] <- list(
-      data = get_eddata_topic_subtopic(nces_number, years, source = 'edfacts', topic = "assessments", subtopic = list("race"), grades = 99) %>%
-        dplyr::select(ncessch, year, school_name, race, contains('_test_')),
+      data = get_edfacts_state_assessments(nces_number, years),
       source = glue::glue("EDFacts{source_suffix}")
     )
   }

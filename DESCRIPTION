@@ -20,6 +20,12 @@ Imports:
     tidyr,
     magrittr,
     tigris,
-    forcats
+    forcats,
+    sf,
+    scales,
+    leaflet,
+    flexdashboard
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues
+Depends: 
+    R (>= 2.10)
