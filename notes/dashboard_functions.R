@@ -158,11 +158,6 @@ hc_plot_grouped_perc <- function(.data, x_col, y_col, group_col, tool_tip_html, 
 
     plt <- plt %>%
       plt_hc_percentage(y_var_title)
-      # hc_yAxis(
-      #   title = list(text = y_var_title),
-      #   labels = list(format = '{value}%'),
-      #   min = 0, max = 100
-      # )
 
   } else {
 

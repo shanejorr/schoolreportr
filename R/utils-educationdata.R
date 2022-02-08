@@ -198,16 +198,17 @@ clean_crdc <- function(.data, metric_colname) {
 
   initial_race_order <- c('Black, African-American', 'Hispanic / Latinx', 'White')
 
-  .data %>%
+  .data <- .data %>%
     dplyr::filter(
       sex == 'Total',
       disability == 'Total'
     ) %>%
-    dplyr::mutate(
-      race = rename_race(race),
-      race = forcats::fct_relevel(race, initial_race_order) %>%
-        forcats::fct_relevel('Two or more races', after = Inf)) %>%
+    dplyr::mutate(race = rename_race(race)) %>%
     dplyr::select(ncessch, year, leaid, race, dplyr::all_of(metric_colname))
+
+  .data$race <- relevel_race(.data$race)
+
+  return(.data)
 
 }
 

@@ -40,7 +40,9 @@ district_shapefile <- tigris::school_districts(state = state_abb, cb = FALSE) %>
   # filter for district
   dplyr::filter(GEOID == school_directory$leaid)
 
-dashboard_title <- stringr::str_c(school_directory$school_name, " Landscape Analysis")
+school_name <- school_directory$school_name[1]
+
+dashboard_title <- stringr::str_c(school_name, " Landscape Analysis")
 
 yr <- school_directory$year[[1]]
 
@@ -115,4 +117,70 @@ district_map <- leaflet_district_schools(district_shapefile, school_directory)
 
 ```{r}
 district_map
+```
+
+### Cities in District {data-width=200}
+
+```{r citiesTable, include = FALSE, results = 'hide'}
+pop_colname <- glue::glue("**City Pop.<br>{max(years)}**")
+
+cities_table <- table_cities_in_single_district(district_shapefile, state = state_abb, year = max(years)) %>%
+  cities_in_district()
+```
+
+```{r}
+cities_table
+```
+
+School Demographics {data-orientation=rows}
+=====================================  
+
+Row {data-height=400}
+-----------------------------------------------------------------------
+
+### Total Enrollment by Year
+
+```{r}
+total_enrollment <- ed_data$enrollment_race$data %>%
+  dplyr::filter(race == 'Total')
+
+school_year_x_label <- 'School Year'
+
+tooltip_html <- create_html_tooltip('year', '', 'total_enrollment') %>%
+  stringr::str_remove("[(]") %>%
+  stringr::str_remove("[)]")
+
+highcharter::hchart(total_enrollment, "line", highcharter::hcaes(x = year, y = total_enrollment))  %>%
+  custom_hc_tooltip(tooltip_html) %>%
+  add_title_axis_labels(
+    plt_title = glue::glue("{school_name}\nStudent Enrollment by School Year"),
+    plt_x_label = school_year_x_label,
+    plt_y_label = "Enrollment"
+  )
+```
+
+Row {data-height=400}
+-----------------------------------------------------------------------
+
+### Enrollment by Race
+
+```{r}
+initial_race_order <- c('Black, African-American', 'Hispanic / Latinx', 'White')
+
+race_enrollment <- ed_data$enrollment_race$data %>%
+  dplyr::filter(race != 'Total')
+
+race_enrollment$race <- relevel_race(race_enrollment$race)
+
+tooltip_html <- create_html_tooltip('race', 'perc_cleaned', 'total_enrollment')
+
+race_enrollment %>%
+  dplyr::arrange(dplyr::desc(year), race) %>%
+  create_school_demo_linechart(
+    x_col = 'year', y_col = 'perc_enrollment', group_col = 'race', 
+    tool_tip_html = tooltip_html, 
+    plt_title = "Enrollment by Race",
+    x_var_title = school_year_x_label,
+    y_var_title = "Percentage Enrollment by Race"
+  )
 ```

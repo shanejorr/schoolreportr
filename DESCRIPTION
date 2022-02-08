@@ -24,7 +24,9 @@ Imports:
     sf,
     scales,
     leaflet,
-    flexdashboard
+    flexdashboard,
+    gt,
+    highcharter
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues
 Depends: 
