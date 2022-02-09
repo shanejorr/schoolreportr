@@ -22,10 +22,26 @@ rename_race <- function(race_col) {
 #' @keywords internal
 relevel_race <- function(race_col) {
 
+  # rename race to ensure it matches standard names
+  race_col <- rename_race(race_col)
+
   race_col <- forcats::fct_relevel(race_col, 'Black, African-American')
   race_col <- forcats::fct_relevel(race_col, 'Hispanic / Latinx', after = 1)
   race_col <- forcats::fct_relevel(race_col, 'White', after = 2)
   race_col <- forcats::fct_relevel(race_col, 'Two or more races', after = Inf)
 
   return(race_col)
+}
+
+#' Get state FIPS codes from state abbreviations
+#'
+#' @keywords internal
+state_fips_code <- function(state_abb) {
+
+  tidycensus::fips_codes %>%
+    dplyr::filter(state == !!state_abb) %>%
+    dplyr::distinct(state_code) %>%
+    dplyr::pull(state_code) %>%
+    as.numeric()
+
 }
