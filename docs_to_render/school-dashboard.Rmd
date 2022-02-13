@@ -325,3 +325,51 @@ hc_plot_assessments(assessment_total, 'location', 'math_test_pct_prof_midpt', "M
 ```{r}
 hc_plot_grouped_bar(assessment_race, 'race', 'math_test_pct_prof_midpt', 'location', race_order, race_y_var_title)
 ```
+
+Community Demographics {data-orientation=rows}
+=====================================  
+
+```{r}
+# find the census tracts in the school district
+tracts_in_district <- census_tracts_in_district(state_abb, max(years), district_shapefile)
+```
+
+Row {data-height=350}
+-------------------------------------
+
+### Racial Composition
+
+```{r}
+race_popualtion_variables <- c(
+  B03002_001 = 'Total',
+  B03002_004 = 'Black, African-American', B03002_012 = 'Hispanic / Latinx',
+  B03002_003 = 'White', B03002_005 = 'American Indian or Alaska Native', B03002_006 = 'Asian',
+  B03002_007 = 'Native Hawaiian or other Pacific Islander', 
+  B03002_010 = 'Two or more races', B03002_011 = 'Two or more races'
+)
+  
+census_demographics <- acs_demographic_data(names(race_popualtion_variables), state_abb, tracts_in_district$tracts_in_district) %>%
+  dplyr::mutate(variable = dplyr::recode(variable, !!!race_popualtion_variables)) %>%
+  calculate_percentages('Total')
+
+hc_plot_grouped_bar(census_demographics, 'variable', 'perc_demo', 'geography', race_order, "Racial breakdown of community")
+```
+
+### Educational Attainment of Population 25 and Over
+
+```{r}
+census_education <- educational_attainment(state_abb, tracts_in_district$tracts_in_district, max(years))
+
+ed_order <- unique(census_education$variable)
+
+hc_plot_grouped_bar(census_education, 'variable', 'perc_demo', 'geography', ed_order, "Educational attainment of community")
+```
+
+Row {data-height=400}
+-----------------------------------------------------------------------
+
+### Racial Composition of Community by Census Tract
+
+```{r}
+
+```

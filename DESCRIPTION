@@ -26,7 +26,8 @@ Imports:
     leaflet,
     flexdashboard,
     gt,
-    highcharter
+    highcharter,
+    purrr
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues
 Depends: 

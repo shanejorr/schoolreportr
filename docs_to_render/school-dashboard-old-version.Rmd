@@ -540,7 +540,7 @@ Row {data-height=350}
 -------------------------------------
 
 ```{r racePopulationData}
-acs_vars <- load_variables(year, "acs5", cache = TRUE)
+acs_vars <- tidycensus::load_variables(max(years), "acs5", cache = TRUE)
 
 population_tables <- c(
   Total = 'B03002_001',
