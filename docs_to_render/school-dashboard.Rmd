@@ -148,12 +148,10 @@ total_enrollment <- ed_data$enrollment_race$data %>%
 
 school_year_x_label <- 'School Year'
 
-tooltip_html <- create_html_tooltip('year', '', 'total_enrollment') %>%
-  stringr::str_remove("[(]") %>%
-  stringr::str_remove("[)]")
+plt_tooltip <- paste0("<b>", school_name, ":</b>  {point.y:.0f} students")
 
-highcharter::hchart(total_enrollment, "line", highcharter::hcaes(x = year, y = total_enrollment))  %>%
-  custom_hc_tooltip(tooltip_html) %>%
+highcharter::hchart(total_enrollment, "line", highcharter::hcaes(x = year, y = total_enrollment),
+                    tooltip = list(pointFormat = plt_tooltip))  %>%
   add_title_axis_labels(
     plt_title = glue::glue("{school_name}\nStudent Enrollment by School Year"),
     plt_x_label = school_year_x_label,
@@ -174,17 +172,18 @@ race_enrollment <- ed_data$enrollment_race$data %>%
 
 race_enrollment$race <- relevel_race(race_enrollment$race)
 
-tooltip_html <- create_html_tooltip('race', 'perc_cleaned', 'total_enrollment')
+tooltip_html <- create_html_tooltip('race', '.perc_cleaned', 'total_enrollment')
 
 race_enrollment %>%
-  dplyr::arrange(dplyr::desc(year), race) %>%
-  create_school_demo_linechart(
-    x_col = 'year', y_col = 'perc_enrollment', group_col = 'race', 
+  dplyr::arrange(year, race) %>%
+  pretty_percent_cols('perc_enrollment') %>%
+  hc_plot_grouped_line(
+    x_col = 'year', y_col = '.perc_plot', group_col = 'race', 
     tool_tip_html = tooltip_html, 
-    plt_title = NULL,
-    x_var_title = school_year_x_label,
-    y_var_title = race_y_var_title
-  )
+    plt_title = NULL, 
+    x_var_title = school_year_x_label, y_var_title = race_y_var_title,
+    y_percentage = TRUE
+  ) 
 ```
 
 ### Enrollment by Race with State Averages
@@ -198,24 +197,24 @@ state_enrollment_race <- enrollment_race %>%
   dplyr::mutate(location = glue::glue("{state_abb} State-wide Percentage")) %>%
   dplyr::select(location, race, perc_enrollment = perc_enrollment_state)
 
+state_value <- unique(state_enrollment_race$location)
+
 race_enrollment_school_state <- race_enrollment %>%
   dplyr::filter(year == max(year)) %>%
   dplyr::mutate(location = !!school_name) %>%
   dplyr::select(location, race, perc_enrollment) %>%
   dplyr::bind_rows(state_enrollment_race) %>%
-  dplyr::mutate(perc_enrollment = perc_enrollment * 100)
+  dplyr::mutate(
+    perc_enrollment = perc_enrollment * 100,
+    location = forcats::fct_relevel(location, state_value, after = Inf)
+  )
 
 race_enrollment_school_state$race <- relevel_race(race_enrollment_school_state$race)
 
 race_order <- levels(race_enrollment_school_state$race)
 
-highcharter::hchart(
-  race_enrollment_school_state, "column", 
-  highcharter::hcaes(x = race, y = perc_enrollment, group = location),
-  tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
-  ) %>%
-  highcharter::hc_xAxis(categories = race_order) %>%
-  plt_hc_percentage(race_y_var_title)
+hc_plot_grouped_bar(race_enrollment_school_state, 'race', 'perc_enrollment', 'location', 
+                    race_order, race_y_var_title)
 ```
 
 Row {data-height=400}
@@ -303,25 +302,13 @@ assessment_race$race <- relevel_race(assessment_race$race)
 ### Reading State Assessments
 
 ```{r}
-highcharter::hchart(
-  assessment_total, "column", 
-  highcharter::hcaes(x = location, y = read_test_pct_prof_midpt),
-  tooltip = list(pointFormat = "<b>Reading % Proficient:</b> {point.y:,.0f}%")
-) %>%
-  plt_hc_percentage(reading_y_var_title) %>%
-  highcharter::hc_xAxis(title = NULL)
+hc_plot_assessments(assessment_total, 'location', 'read_test_pct_prof_midpt', "Reading")
 ```
 
 ### Reading State Assessments by Race
 
 ```{r}
-highcharter::hchart(
-  assessment_race, "column", 
-  highcharter::hcaes(x = race, y = read_test_pct_prof_midpt, group = location),
-  tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
-  ) %>%
-  highcharter::hc_xAxis(categories = race_order) %>%
-  plt_hc_percentage(race_y_var_title)
+hc_plot_grouped_bar(assessment_race, 'race', 'read_test_pct_prof_midpt', 'location', race_order, race_y_var_title)
 ```
 
 Row {data-height=400}
@@ -330,23 +317,11 @@ Row {data-height=400}
 ### Math State Assessments
 
 ```{r}
-highcharter::hchart(
-  assessment_total, "column", 
-  highcharter::hcaes(x = location, y = math_test_pct_prof_midpt),
-  tooltip = list(pointFormat = "<b>Reading % Proficient:</b> {point.y:,.0f}%")
-) %>%
-  plt_hc_percentage(reading_y_var_title) %>%
-  highcharter::hc_xAxis(title = NULL)
+hc_plot_assessments(assessment_total, 'location', 'math_test_pct_prof_midpt', "Math")
 ```
 
 ### Math State Assessments by Race
 
 ```{r}
-highcharter::hchart(
-  assessment_race, "column", 
-  highcharter::hcaes(x = race, y = math_test_pct_prof_midpt, group = location),
-  tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
-  ) %>%
-  highcharter::hc_xAxis(categories = race_order) %>%
-  plt_hc_percentage(race_y_var_title)
+hc_plot_grouped_bar(assessment_race, 'race', 'math_test_pct_prof_midpt', 'location', race_order, race_y_var_title)
 ```
