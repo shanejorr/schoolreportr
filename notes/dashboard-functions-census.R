@@ -40,10 +40,11 @@ acs_district_state <- function(acs_variables, state_fips, tract_fips) {
   map_df(
     acs_geographies,
     ~get_acs(
-      geography = .x,
-      variables = acs_variables,
+      geography = 'state', #.x,
+      table = 'B03002'
+      #variables = acs_variables,
       survey = 'acs5',
-      state = "TX",
+      state = "AR",
       moe_level = 95
     )
   ) %>%

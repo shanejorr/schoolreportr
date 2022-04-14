@@ -45,3 +45,23 @@ state_fips_code <- function(state_abb) {
     as.numeric()
 
 }
+
+#' Create percentage columns for plotting
+#'
+#' @keywords internal
+pretty_percent_cols <- function(.data, perc_col) {
+
+  .data %>%
+    dplyr::mutate(
+      .perc_plot = .data[[perc_col]] * 100,
+      .perc_cleaned = scales::percent(.data[[perc_col]], accuracy = 1)
+    )
+
+}
+
+#' ACS Census demographic data
+#'
+#' Import demographic data from the ACS. Import multiple tables at once and return in single dataframe.
+#'
+#' @keywords internal
+acs_demographic_data

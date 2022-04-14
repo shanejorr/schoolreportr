@@ -108,32 +108,15 @@ add_title_axis_labels <- function(plt, plt_title, plt_x_label = 'School Year', p
 
 }
 
-#' Clean data and create demo line chart
-#' This function does the data cleaning to create a line chart of demographics,
-#' Calls the function to create the chart
-#'
-#' @keywords internal
-create_school_demo_linechart <- function(.data, group_col, y_col, x_col, ...) {
-
-  .data %>%
-    dplyr::mutate(
-      perc_plot = .data[[y_col]] * 100,
-      perc_cleaned = scales::percent(.data[[y_col]], accuracy = 1)
-    ) %>%
-    dplyr::arrange(dplyr::desc(.data[[x_col]])) %>%
-    hc_plot_grouped_perc(y_col = 'perc_plot', group_col = group_col, x_col = x_col, ...)
-}
-
 #' Highcharts grouped line chart with percentages
 #'
 #' @keywords internal
-hc_plot_grouped_perc <- function(.data, x_col, y_col, group_col, tool_tip_html, plt_title,
-                                 x_var_title, y_var_title, y_percentage = TRUE, reverse_x = TRUE) {
+hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, tool_tip_html, plt_title,
+                                 x_var_title, y_var_title, y_percentage = TRUE) {
 
   plt <- highcharter::hchart(.data, "line", highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]))  %>%
     custom_hc_tooltip(tool_tip_html) %>%
     highcharter::hc_title(text = plt_title) %>%
-    highcharter::hc_xAxis(title = list(text = x_var_title), reversed = reverse_x) %>%
     highcharter::hc_legend(enabled = TRUE)
 
   if (y_percentage) {
@@ -148,6 +131,40 @@ hc_plot_grouped_perc <- function(.data, x_col, y_col, group_col, tool_tip_html, 
   }
 
   return(plt)
+
+}
+
+#' Highcharts grouped bar chart
+#'
+#' @keywords internal
+hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, x_order, y_title) {
+
+  highcharter::hchart(
+    .data, "column",
+    highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]),
+    tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
+  ) %>%
+    highcharter::hc_xAxis(title = list(text = NULL), categories = x_order) %>%
+    plt_hc_percentage(y_title)
+
+}
+
+#' Plot state assessments
+#'
+#' @keywords internal
+hc_plot_assessments <- function(.data, x_var, y_var, subject) {
+
+  tool_tip <- paste0("<b>", subject, " % Proficient:</b> {point.y:,.0f}%")
+
+  y_var_title <- paste0("Percentage Passing State ", subject, " Assessments")
+
+  highcharter::hchart(
+    .data, "column",
+    highcharter::hcaes(x = .data[[x_var]], y = .data[[y_var]]),
+    tooltip = list(pointFormat = tool_tip)
+  ) %>%
+    plt_hc_percentage(y_var_title) %>%
+    highcharter::hc_xAxis(title = NULL)
 
 }
 
