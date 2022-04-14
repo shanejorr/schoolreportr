@@ -5,6 +5,21 @@ fips_states <- function() {
   c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
 }
 
+#' Years data is available for each Urban Inst. API data source
+#'
+#' @keywords internal
+data_years_available <- function(data_source) {
+
+  years_available <- list(
+    ccd = 1986:2020,
+    crdc = c(2011, 2013, 2015, 2017),
+    edfacts = 2009:2018
+  )
+
+  years_available[[data_source]]
+
+}
+
 #' Base function to import data from the educationdata api
 #'
 #'
@@ -17,9 +32,9 @@ get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopi
 
   years <- switch(
     source,
-    'ccd' = years,
-    'crdc' = intersect(c(2011, 2013, 2015, 2017), years),
-    'edfacts' = intersect(2009:2018, years)
+    'ccd' = data_years_available('ccd'),
+    'crdc' = intersect(data_years_available('crdc'), years),
+    'edfacts' = intersect(data_years_available('edfacts'), years)
   )
 
   # create filter list based on whether grades are present

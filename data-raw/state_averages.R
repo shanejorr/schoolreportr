@@ -1,12 +1,46 @@
 # Create datasets that contain state averages for education data
 library(tidyverse)
 
-
 devtools::load_all()
 
-ccd_year <- 2019
-crdc_year <- 2017
-edfacts_year <- 2018
+# overall state average for state assessments by race
+# get each individual race and all races (99)
+race_to_use <- c(seq(1, 9), 99)
+
+for (x in fips_states()){
+
+state_assessment <- educationdata::get_education_data(level = "school-districts",
+                                  source = "edfacts",
+                                  topic = "assessments",
+                                  filters = list(
+                                    fips = 10,
+                                    year = 2018,#data_years_available('edfacts'),
+                                    grade_edfacts = 99
+                                  ),
+                                  subtopic = list("race"),
+                                  add_labels = TRUE
+                        )
+
+a <- state_assessment %>%
+  group_by(race) %>%
+    mutate(
+      read_test_num_passers = read_test_num_valid * read_test_pct_prof_midpt,
+      math_test_num_passers = math_test_num_valid * math_test_pct_prof_midpt,
+      read_test_num_valid = ifelse(is.na(read_test_num_passers), NA_real_, read_test_num_valid),
+      math_test_num_valid = ifelse(is.na(math_test_num_passers), NA_real_, math_test_num_valid)
+    ) %>%
+    summarize(across(contains('_num_'), ~sum(.x, na.rm = TRUE))) %>%
+    mutate(
+      read_test_pct_prof_midpt = read_test_num_passers  / read_test_num_valid,
+      math_test_pct_prof_midpt = math_test_num_passers  / math_test_num_valid,
+      state_fips = !!10
+    ) %>%
+    ungroup()
+
+state_assessments <- bind_rows(state_assessments, single_state)
+
+}
+##################################################
 
 data(school_directory)
 
@@ -25,7 +59,7 @@ grouped_states <- states %>%
 
 #readr::write_rds(state_enrol_race, 'crdc_enroll_race.rds')
 
-crdc_enroll_race <- readr::read_rds('crdc_enroll_race.rds')
+#crdc_enroll_race <- readr::read_rds('crdc_enroll_race.rds')
 
 # state sat / act participation -----------------
 
@@ -50,7 +84,7 @@ for (x in fips_states()){
 
 }
 
-readr::write_rds(state_test_participation, 'state_test_part.rds')
+#readr::write_rds(state_test_participation, 'state_test_part.rds')
 
 # lep status -------------------------------------------
 
@@ -74,7 +108,7 @@ for (x in fips_states()){
 
 }
 
-readr::write_rds(state_lep, 'state_lep.rds')
+#readr::write_rds(state_lep, 'state_lep.rds')
 
 # state assessments ------------------------------------------------
 
@@ -104,7 +138,7 @@ for (x in fips_states()){
 
 }
 
-readr::write_rds(state_assessments, 'state_assessments.rds')
+#readr::write_rds(state_assessments, 'state_assessments.rds')
 
 # enrollment by race------------------------------------------------
 
@@ -127,9 +161,9 @@ for (x in fips_states()){
 
 }
 
-readr::write_rds(enrollment_race, 'enrollment_race.rds')
+#readr::write_rds(enrollment_race, 'enrollment_race.rds')
 
-usethis::use_data(state_test_participation, state_lep, state_assessments,enrollment_race, internal= TRUE, overwrite = FALSE)
+usethis::use_data(state_test_participation, state_lep, state_assessments,enrollment_race, internal= TRUE, overwrite = TRUE)
 
 
 # graduation rates ------------------------------------------------

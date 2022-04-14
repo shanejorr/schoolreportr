@@ -88,3 +88,17 @@ educational_attainment <- function(state, tract_fips, year) {
     calculate_percentages('Population 25 and over')
 
 }
+
+#' Get state FIPS codes
+#'
+#' @keywords internal
+get_state_fips <- function(state_abbreviation) {
+
+  data(fips_codes, package = 'tidycensus')
+
+  fips_codes %>%
+    dplyr::filter(state == state_abbreviation) %>%
+    pull(state_code) %>%
+    unique() %>%
+    as.numeric()
+}

@@ -58,10 +58,3 @@ pretty_percent_cols <- function(.data, perc_col) {
     )
 
 }
-
-#' ACS Census demographic data
-#'
-#' Import demographic data from the ACS. Import multiple tables at once and return in single dataframe.
-#'
-#' @keywords internal
-acs_demographic_data
