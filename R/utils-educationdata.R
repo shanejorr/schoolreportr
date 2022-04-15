@@ -206,6 +206,25 @@ convert_to_na <- function(.data, cols) {
 
 }
 
+#' Clean up numeric values of state assessments and calculate number who passed
+#'
+#' @keywords internal
+clean_numeric_assessments <- function(.data) {
+
+  .data %>%
+    # clean up numeric columns
+    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~as.numeric(.x))) %>%
+    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~ifelse(.x < 0, NA_real_, .x))) %>%
+    # convert integers to percentages
+    dplyr::mutate(dplyr::across(dplyr::contains("_pct_prof_"), ~(.x / 100))) %>%
+    # calculate number of students who passed
+    dplyr::mutate(
+      read_test_num_pass = round(read_test_num_valid * read_test_pct_prof_midpt, 0),
+      math_test_num_pass = round(math_test_num_valid * math_test_pct_prof_midpt, 0)
+    )
+
+}
+
 #' Common clean up for CRDC data
 #'
 #' @keywords internal

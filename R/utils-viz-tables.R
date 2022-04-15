@@ -111,12 +111,12 @@ add_title_axis_labels <- function(plt, plt_title, plt_x_label = 'School Year', p
 #' Highcharts grouped line chart with percentages
 #'
 #' @keywords internal
-hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, tool_tip_html, plt_title,
+hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title,
                                  x_var_title, y_var_title, y_percentage = TRUE) {
 
   plt <- highcharter::hchart(.data, "line", highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]))  %>%
-    custom_hc_tooltip(tool_tip_html) %>%
     highcharter::hc_title(text = plt_title) %>%
+    highcharter::hc_xAxis(title = list(text = x_var_title)) %>%
     highcharter::hc_legend(enabled = TRUE)
 
   if (y_percentage) {
