@@ -1,8 +1,101 @@
+#' Get district directory (staff, address, etc.)
+#'
+#' @param leaid The school's LEAID number, as a string.
+#' @param year The years from which you want to retrieve data. No data will be returned if data
+#'      is not available for the year.
+#'
+#' @returns A data set with the district directory.
+#'
+#' @keywords internal
+get_district_directory <- function(leaid, year) {
+
+  educationdata::get_education_data(
+    level = "school-districts",
+    source = "ccd",
+    topic = "directory",
+    filters = list(year = year, leaid = leaid)
+  )
+
+}
+
+#' Percentage of 5-17 year olds in poverty in district
+#'
+#' @param leaid The school's LEAID number, as a string.
+#' @param year The years from which you want to retrieve data. No data will be returned if data
+#'      is not available for the year.
+#'
+#' @returns A data set with the percentage of 5-17 year old sin poverty by year.
+#'
+#' @keywords internal
+get_district_in_poverty <- function(leaid, year) {
+
+  educationdata::get_education_data(
+    level = "school-districts",
+    source = "saipe",
+    filters = list(year = year, leaid = leaid)
+  )
+
+}
+
+#' School directory for schools in district and grade
+#'
+#' @param leaid The school's LEAID number, as a string.
+#' @param year The years from which you want to retrieve data. No data will be returned if data
+#'      is not available for the year.
+#' @param grades Grades to import. Defaults to all grades (99)
+#'
+#' @returns A data set with directory information for all schools in the district and within grades.
+#'
+#' @keywords internal
+get_schools_in_district <- function(leaid, year, grades = 99) {
+
+  educationdata::get_education_data(
+    level = "schools",
+    source = "ccd",
+    topic = "directory",
+    filters = list(leaid = leaid, year = year, school_status = c(1,3,4,5))
+  ) %>%
+    # make TRUE if school is in grade range, FALSE otherwise
+    dplyr::mutate(in_grade = dplyr::case_when(
+      lowest_grade_offered %in% grades ~ TRUE,
+      highest_grade_offered %in% grades ~ TRUE,
+      dplyr::between(lowest_grade_offered, min(grades), max(grades)) ~ TRUE,
+      dplyr::between(highest_grade_offered, min(grades), max(grades)) ~ TRUE,
+      TRUE ~ FALSE
+    ))
+
+}
+
+#' Get district enrollment information by year, grade, race
+#'
+#' @param leaid The school's LEAID number, as a string.
+#' @param years The years from which you want to retrieve data. No data will be returned if data
+#'      is not available for the year.
+#' @param grades Grades to import. Defaults to all grades (99)
+#'
+#' @returns A data set with the district enrollment by year, grade, and race.
+#'
+#' @keywords internal
+get_district_enrollment <- function(leaid, years, grades = 99) {
+
+  educationdata::get_education_data(
+    level = "school-districts",
+    source = "ccd",
+    topic = "enrollment",
+    filters = list(year = years, leaid = leaid, grade = grades),
+    subtopic = list("race"),
+    add_labels = TRUE
+  ) %>%
+    dplyr::group_by(leaid, year, race) %>%
+    dplyr::summarize(enrollment = sum(enrollment, na.rm = TRUE), .groups = 'drop')
+
+}
+
 #' Get state assessment data for a district
 #'
 #' Imports district data from Ed Facts using the Urban Institute's API. The data contains state assessment information.
 #'
-#' @param lea_number The school's LEAID number, as a string.
+#' @param fips_code State FIPS code, as integer.
 #' @param years The years from which you want to retrieve data. No data will be returned if data
 #'      is not available for the year.
 #' @param grade Grades to import. Defaults to all grades (99)
@@ -21,7 +114,6 @@ get_state_assessments_by_district <- function(fips_code, years, grade = 99) {
                      topic = "assessments",
                      filters = list(
                        fips = fips_code,
-                       #leaid_num = lea_number,
                        year = years,
                        grade_edfacts = grade
                       ),
@@ -65,7 +157,7 @@ assessment_scores_by_race <- function(state_assessment_data, state_abb, district
 
   # calculate district scores
   district <- state_assessment_data %>%
-    dplyr::filter(leaid_num == !!district_leaid) %>%
+    dplyr::filter(leaid_num == !!as.numeric(district_leaid)) %>%
     aggregate_assessment(c('lea_name', 'year', 'race')) %>%
     dplyr::mutate(geography = lea_name) %>%
     dplyr::select(-lea_name)
