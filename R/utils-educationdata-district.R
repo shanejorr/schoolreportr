@@ -61,24 +61,45 @@ aggregate_assessment <- function(.data, grouping_vars) {
 #'      for the whole state and a single district that is specified.
 #'
 #' @export
-assessment_scores_by_race <- function(state_abb, district_leaid, years, grade = 99) {
-
-  # pull state assessment data from API
-  state_assessment <- get_state_assessments_by_district(state_fips_code(state_abb), years)
+assessment_scores_by_race <- function(state_assessment_data, state_abb, district_leaid, years, grade = 99) {
 
   # calculate district scores
-  district <- state_assessment %>%
+  district <- state_assessment_data %>%
     dplyr::filter(leaid_num == !!district_leaid) %>%
     aggregate_assessment(c('lea_name', 'year', 'race')) %>%
     dplyr::mutate(geography = lea_name) %>%
     dplyr::select(-lea_name)
 
   # calcualte state scores
-  state_average_assessment <- state_assessment %>%
+  state_average_assessment <- state_assessment_data %>%
     aggregate_assessment(c('year', 'race')) %>%
     dplyr::mutate(geography = glue::glue("{state_abb} Total"))
 
   district %>%
-    dplyr::bind_rows(state_average_assessment)
+    dplyr::bind_rows(state_average_assessment) %>%
+    # rename racial categories and relevel
+    dplyr::mutate(race = rename_reorder_race_education(race))
+
+}
+
+#' Rename and reorder race categories
+#'
+#' Rename Black to 'Black / African-American' and Hispanic to 'Hispanic / Latinx'. Also reorder so that
+#' 'Black / African-American' and 'Hispanic / Latinx' appear first and second.
+#'
+#' @param race_col A vector containing the race data
+#'
+#' @returns A factor vector with race names changes and order changes.
+rename_reorder_race_education <- function(race_col) {
+
+  race_order_education <- c('Black' = 'Black / African-American', 'Hispanic' = 'Hispanic / Latinx', 'White' = 'White')
+
+  race <- dplyr::recode(race_col, !!!race_order_education)
+
+  race <- forcats::fct_relevel(race, race_order_education)
+
+  race <- forcats::fct_relevel(race, 'Two or more races', after = Inf)
+
+  return(race)
 
 }

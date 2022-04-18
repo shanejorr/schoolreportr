@@ -137,14 +137,14 @@ hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title,
 #' Highcharts grouped bar chart
 #'
 #' @keywords internal
-hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, x_order, y_title) {
+hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, y_title) {
 
   highcharter::hchart(
     .data, "column",
     highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]),
     tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
   ) %>%
-    highcharter::hc_xAxis(title = list(text = NULL), categories = x_order) %>%
+    highcharter::hc_xAxis(title = list(text = NULL)) %>%
     plt_hc_percentage(y_title)
 
 }
