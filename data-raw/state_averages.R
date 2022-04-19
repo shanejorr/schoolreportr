@@ -21,22 +21,6 @@ state_assessment <- educationdata::get_education_data(level = "school-districts"
                                   add_labels = TRUE
                         )
 
-a <- state_assessment %>%
-  group_by(race) %>%
-    mutate(
-      read_test_num_passers = read_test_num_valid * read_test_pct_prof_midpt,
-      math_test_num_passers = math_test_num_valid * math_test_pct_prof_midpt,
-      read_test_num_valid = ifelse(is.na(read_test_num_passers), NA_real_, read_test_num_valid),
-      math_test_num_valid = ifelse(is.na(math_test_num_passers), NA_real_, math_test_num_valid)
-    ) %>%
-    summarize(across(contains('_num_'), ~sum(.x, na.rm = TRUE))) %>%
-    mutate(
-      read_test_pct_prof_midpt = read_test_num_passers  / read_test_num_valid,
-      math_test_pct_prof_midpt = math_test_num_passers  / math_test_num_valid,
-      state_fips = !!10
-    ) %>%
-    ungroup()
-
 state_assessments <- bind_rows(state_assessments, single_state)
 
 }

@@ -6,14 +6,16 @@
 #'
 #' @returns A data set with the district directory.
 #'
-#' @keywords internal
+#' @export
 get_district_directory <- function(leaid, year) {
+
+  ccd_years <- intersect(data_years_available('ccd'), year)
 
   educationdata::get_education_data(
     level = "school-districts",
     source = "ccd",
     topic = "directory",
-    filters = list(year = year, leaid = leaid)
+    filters = list(year = ccd_years, leaid = leaid)
   )
 
 }
@@ -26,13 +28,15 @@ get_district_directory <- function(leaid, year) {
 #'
 #' @returns A data set with the percentage of 5-17 year old sin poverty by year.
 #'
-#' @keywords internal
+#' @export
 get_district_in_poverty <- function(leaid, year) {
+
+  saipe_years <- intersect(data_years_available('saipe'), year)
 
   educationdata::get_education_data(
     level = "school-districts",
     source = "saipe",
-    filters = list(year = year, leaid = leaid)
+    filters = list(year = saipe_years, leaid = leaid)
   )
 
 }
@@ -46,18 +50,20 @@ get_district_in_poverty <- function(leaid, year) {
 #'
 #' @returns A data set with directory information for all schools in the district and within grades.
 #'
-#' @keywords internal
+#' @export
 get_schools_in_district <- function(leaid, year, grades = 99) {
 
   all_grades <- seq(min(grades), max(grades), 1)
 
   recode_grades <- c('-1' = 'Pre-K', '0' = 'K')
 
+  ccd_years <- intersect(data_years_available('ccd'), year)
+
   educationdata::get_education_data(
     level = "schools",
     source = "ccd",
     topic = "directory",
-    filters = list(leaid = leaid, year = year, school_status = c(1,3,4,5))
+    filters = list(leaid = leaid, year = ccd_years, school_status = c(1,3,4,5))
   ) %>%
     # make TRUE if school is in grade range, FALSE otherwise
     dplyr::mutate(in_grade = dplyr::case_when(
@@ -86,14 +92,16 @@ get_schools_in_district <- function(leaid, year, grades = 99) {
 #'
 #' @returns A data set with the district enrollment by year, grade, and race.
 #'
-#' @keywords internal
+#' @export
 get_district_enrollment <- function(leaid, years, grades = 99) {
+
+  ccd_years <- intersect(data_years_available('ccd'), years)
 
   educationdata::get_education_data(
     level = "school-districts",
     source = "ccd",
     topic = "enrollment",
-    filters = list(year = years, leaid = leaid, grade = grades),
+    filters = list(year = ccd_years, leaid = leaid, grade = grades),
     subtopic = list("race"),
     add_labels = TRUE
   ) %>%
@@ -114,18 +122,20 @@ get_district_enrollment <- function(leaid, years, grades = 99) {
 #' @returns A list with each element containing a data frame with school data. The list is named,
 #'      which identifies the data contained in the list element.
 #'
-#' @keywords internal
+#' @export
 get_state_assessments_by_district <- function(fips_code, years, grade = 99) {
 
   # get each individual race and all races (99)
   race_to_use <- c(seq(1, 9), 99)
+
+  edfacts <- intersect(data_years_available('edfacts'), years)
 
   educationdata::get_education_data(level = "school-districts",
                      source = "edfacts",
                      topic = "assessments",
                      filters = list(
                        fips = fips_code,
-                       year = years,
+                       year = edfacts,
                        grade_edfacts = grade
                       ),
                      subtopic = list("race"),
@@ -139,7 +149,7 @@ get_state_assessments_by_district <- function(fips_code, years, grade = 99) {
 #' Summarize aggregate percentages of state assessment data by using the total number of takers
 #' and total numebr of passers
 #'
-#' @keywords internal
+#' @export
 aggregate_assessment <- function(.data, grouping_vars) {
 
   .data %>%
@@ -192,6 +202,8 @@ assessment_scores_by_race <- function(state_assessment_data, state_abb, district
 #' @param district_race_enrollment Aataframe with enrollment data by race, created with get_district_enrollment()
 #'
 #' @returns A data frame with percentage race breakdowns by year.
+#'
+#' @export
 clean_enrollment_by_race <- function(district_race_enrollment) {
 
   district_race_enrollment %>%
@@ -215,6 +227,8 @@ clean_enrollment_by_race <- function(district_race_enrollment) {
 #' @param race_col A vector containing the race data
 #'
 #' @returns A factor vector with race names changes and order changes.
+#'
+#' @export
 rename_reorder_race_education <- function(race_col) {
 
   race_order_education <- c('Black' = 'Black / African-American', 'Hispanic' = 'Hispanic / Latinx', 'White' = 'White')
@@ -227,4 +241,20 @@ rename_reorder_race_education <- function(race_col) {
 
   return(race)
 
+}
+
+#' Create dataset with all district names and their LEAID numbers
+#'
+#' Used so we can locate leaid numbers from district names
+#'
+#' @export
+get_state_leaid_numbers <- function(state_abb, year) {
+
+  educationdata::get_education_data(
+    level = "school-districts",
+    source = "ccd",
+    topic = "directory",
+    filters = list(fips = state_fips_code(state_abb), year = year)
+  ) %>%
+    dplyr::select(leaid, lea_name, city_location, number_of_schools, enrollment)
 }

@@ -2,7 +2,7 @@
 #'
 #' Leaflet plot showing district bounadries as a shapefile and a point for the school.
 #'
-#' @keywords internal
+#' @export
 leaflet_district_schools <- function(district_shapefile, school_information) {
 
   numeric_cols <- c('latitude', 'longitude', 'free_or_reduced_price_lunch', 'enrollment')
@@ -50,7 +50,8 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
 #' Table of cities
 #'
 #' Clean the table of cities in the district and convert it to a gt table
-#' @keywords internal
+#'
+#' @export
 cities_in_district <- function(district_cities) {
 
   district_cities %>%
@@ -69,7 +70,7 @@ cities_in_district <- function(district_cities) {
 
 #' Formatting for Highcharts tooltip
 #'
-#' @keywords internal
+#' @export
 create_html_tooltip <- function(group_color, y_text, total_number) {
 
   stringr::str_c(
@@ -85,7 +86,7 @@ create_html_tooltip <- function(group_color, y_text, total_number) {
 
 #' Create Highcharts tooltip
 #'
-#' @keywords internal
+#' @export
 custom_hc_tooltip <- function(plt, tool_tip_html) {
 
   plt %>%
@@ -101,7 +102,7 @@ custom_hc_tooltip <- function(plt, tool_tip_html) {
 
 #' Axis labels for Highcharter line charts
 #'
-#' @keywords internal
+#' @export
 add_title_axis_labels <- function(plt, plt_title, plt_x_label = 'School Year', plt_y_label) {
 
   plt %>%
@@ -113,7 +114,7 @@ add_title_axis_labels <- function(plt, plt_title, plt_x_label = 'School Year', p
 
 #' Highcharts grouped line chart with percentages
 #'
-#' @keywords internal
+#' @export
 hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title,
                                  x_var_title, y_var_title, y_percentage = TRUE) {
 
@@ -139,7 +140,7 @@ hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title,
 
 #' Highcharts grouped bar chart
 #'
-#' @keywords internal
+#' @export
 hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, y_title) {
 
   highcharter::hchart(
@@ -154,7 +155,7 @@ hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, y_title) {
 
 #' Plot state assessments
 #'
-#' @keywords internal
+#' @export
 hc_plot_assessments <- function(.data, x_var, y_var, subject) {
 
   tool_tip <- paste0("<b>", subject, " % Proficient:</b> {point.y:,.0f}%")
@@ -173,7 +174,7 @@ hc_plot_assessments <- function(.data, x_var, y_var, subject) {
 
 #' Create percentages on axis labels
 #'
-#' @keywords internal
+#' @export
 plt_hc_percentage <- function(plt, y_var_title) {
 
   # make the y-axis a percentage from 0 to 100%
