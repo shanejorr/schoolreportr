@@ -17,6 +17,8 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
     dplyr::mutate(tool_tip = glue::glue(
       "<strong>{school_name}</strong><br>
       {lea_name}<br>
+      Grades: {grade_range}<br>
+      Number of teachers: {teachers_fte}<br>
       {street_location}<br>
       {city_location}, {state_location} {zip_location}"
     ))
@@ -52,6 +54,7 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
 cities_in_district <- function(district_cities) {
 
   district_cities %>%
+    dplyr::arrange(dplyr::desc(value)) %>%
     dplyr::mutate(
       NAME = stringr::str_remove(NAME, " city, .*"),
       value = scales::comma(value)
