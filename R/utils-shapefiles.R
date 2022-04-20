@@ -2,14 +2,13 @@
 #'
 #' Get the cities in a school district and return a dataframe with the cities and their population.
 #'
-#' @keywords internal
-table_cities_in_single_district <- function(district_shapefile, year, state) {
+#' @export
+table_cities_in_single_district <- function(district_shapefile, state) {
 
   # populations for all cities in the state
   state_city_pop_geo <- tidycensus::get_estimates(
     geography = 'place',
     product = 'population',
-    year = year,
     state = state,
     geometry = TRUE,
     keep_geo_vars = FALSE
@@ -36,14 +35,11 @@ table_cities_in_single_district <- function(district_shapefile, year, state) {
 #' Find the census tracts in the district and return a list containing the following elements:
 #'   (1) vector of tract IDs that are in the district, (2) shapefile of tracts in the district.
 #'
-#' @keywords internal
-census_tracts_in_district <- function(state, year, district_shapefile) {
+#' @export
+census_tracts_in_district <- function(state, district_shapefile) {
 
   # texas block groups
-  state_census_tracts_shapefile <- tigris::tracts(
-    state = state,
-    year = year
-  )  %>%
+  state_census_tracts_shapefile <- tigris::tracts(state = state)  %>%
     sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
     sf::st_transform(4326, quiet = TRUE)
 
@@ -68,7 +64,7 @@ census_tracts_in_district <- function(state, year, district_shapefile) {
 
 #' Helper function that finds tracts in district
 #'
-#' @keywords internal
+#' @export
 calculate_tracts_in_district <- function(district_shapefile, state_census_tracts_shapefile) {
 
   # sample points from the district shapefile

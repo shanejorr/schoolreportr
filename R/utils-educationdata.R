@@ -1,19 +1,30 @@
 #' Vector of state FIPS codes
 #'
-#' @keywords internal
+#' @export
 fips_states <- function() {
   c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
 }
 
 #' Years data is available for each Urban Inst. API data source
 #'
-#' @keywords internal
+#' @param data_source The data source for the API. One of 'ccd', 'crdc', 'edfacts', or 'saipe
+#'
+#' @return Vector with the years (as integers) in which the data source is available.
+#'
+#' @export
 data_years_available <- function(data_source) {
+
+  sources <- c('ccd', 'crdc', 'edfacts', 'saipe')
+
+  sources_string <- paste0(sources, collapse = "', '")
+
+  if (!data_source %in% sources) stop(paste0("Data sources must be one of either: '", sources_string, "'"))
 
   years_available <- list(
     ccd = 1986:2020,
     crdc = c(2011, 2013, 2015, 2017),
-    edfacts = 2009:2018
+    edfacts = 2009:2018,
+    saipe= 1999:2018
   )
 
   years_available[[data_source]]
@@ -23,7 +34,7 @@ data_years_available <- function(data_source) {
 #' Base function to import data from the educationdata api
 #'
 #'
-#' @keywords internal
+#' @export
 get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopic= NULL, grades = FALSE, fips_state = fips_states()) {
 
   source_values <- c('ccd', 'crdc', 'edfacts')
@@ -76,7 +87,7 @@ get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopi
 #' CCD enrollment by race
 #'
 #'
-#' @keywords internal
+#' @export
 get_ccd_enrollment_race <- function(nces_number, years, fips_state = fips_states()) {
 
   get_eddata_topic_subtopic(nces_number, years, source = 'ccd', topic = 'enrollment', subtopic = list('race'), grades = TRUE, fips_state = fips_state) %>%
@@ -95,7 +106,7 @@ get_ccd_enrollment_race <- function(nces_number, years, fips_state = fips_states
 #' Import data from the educationdata api that is school enrollment by LEP status
 #' Uses the "school crdc enrollment lep sex" endpoint
 #'
-#' @keywords internal
+#' @export
 get_crdc_school_enrollment_lep <- function(nces_number, years, fips_state = fips_states()) {
 
   get_eddata_topic_subtopic(nces_number, years, source = 'crdc', topic = "enrollment", subtopic = list("lep", "sex"), fips_state = fips_state) %>%
@@ -117,7 +128,7 @@ get_crdc_school_enrollment_lep <- function(nces_number, years, fips_state = fips
 #' @param crdc_enrollment_by_race A data set of  CRDC enrollment by race. Needed so we can calculate percentages
 #'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
-#' @keywords internal
+#' @export
 get_crdc_school_test_participation_percentages <- function(nces_number, years, crdc_enrollment_by_race, fips_state = fips_states()) {
 
   # number of ACT / SAT takers by race
@@ -136,7 +147,7 @@ get_crdc_school_test_participation_percentages <- function(nces_number, years, c
 #' @param crdc_enrollment_by_race A data set of  CRDC enrollment by race. Needed so we can calculate percentages
 #'    Created with get_crdc_topic_subtopics(nces_number, years, "enrollment", c("race", "sex")) %>% clean_crdc('enrollment_crdc')
 #'
-#' @keywords internal
+#' @export
 get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race, fips_state = fips_states()) {
 
   # number of ACT / SAT takers by race
@@ -152,7 +163,7 @@ get_crdc_school_ib_ap <- function(nces_number, years, crdc_enrollment_by_race, f
 
 #' Graduation Rates
 #'
-#' @keywords internal
+#' @export
 get_edfacts_gradrates <- function(nces_number, years, fips_state = fips_states()) {
 
   message("Getting graduation rate data...")
@@ -166,7 +177,7 @@ get_edfacts_gradrates <- function(nces_number, years, fips_state = fips_states()
 
 #' State Assessments
 #'
-#' @keywords internal
+#' @export
 get_edfacts_state_assessments <- function(nces_number, years, fips_state = fips_states()) {
 
   message("Getting assessment data...")
@@ -180,7 +191,7 @@ get_edfacts_state_assessments <- function(nces_number, years, fips_state = fips_
 
 #' Convert educationdata api missing values to NA
 #'
-#' @keywords internal
+#' @export
 convert_to_na <- function(.data, cols) {
 
   .data %>%
@@ -190,7 +201,7 @@ convert_to_na <- function(.data, cols) {
 
 #' Clean up numeric values of state assessments and calculate number who passed
 #'
-#' @keywords internal
+#' @export
 clean_numeric_assessments <- function(.data) {
 
   .data %>%
@@ -209,7 +220,7 @@ clean_numeric_assessments <- function(.data) {
 
 #' Common clean up for CRDC data
 #'
-#' @keywords internal
+#' @export
 clean_crdc <- function(.data, metric_colname) {
 
   initial_race_order <- c('Black, African-American', 'Hispanic / Latinx', 'White')
@@ -242,7 +253,7 @@ clean_crdc <- function(.data, metric_colname) {
 #' @returns A list with each element containing a data frame with school data. The list is named,
 #'      which identifies the data contained in the list element.
 #'
-#' @export
+#' @jeywords internal
 get_all_educationdata <- function(nces_number, years, data_sources) {
 
   data_source_options <- c(
