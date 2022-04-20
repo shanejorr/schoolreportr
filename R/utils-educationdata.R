@@ -73,24 +73,6 @@ get_eddata_topic_subtopic <- function(nces_number, years, source, topic, subtopi
 
 }
 
-#' School directory
-#'
-#' General information on  the school.
-#'
-#' @keywords internal
-get_ccd_directory <- function(nces_number, years, fips_state = fips_states()) {
-
-  get_eddata_topic_subtopic(nces_number, years, 'ccd', 'directory', fips_state = fips_state) %>%
-    dplyr::select(
-      year, ncessch, school_name, leaid, lea_name, street_location:zip_location, latitude, longitude,
-      dplyr::contains('grade_offered'), teachers_fte, dplyr::contains('lunch'), enrollment
-    ) %>%
-    dplyr::mutate(
-      free_or_reduced_lunch = free_lunch + reduced_price_lunch,
-      perc_free_reduced_lunch = free_or_reduced_lunch / enrollment
-    )
-}
-
 #' CCD enrollment by race
 #'
 #'

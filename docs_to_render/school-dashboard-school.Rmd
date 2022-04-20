@@ -1,0 +1,133 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    
+params:
+  district_lea_id: '1'
+  year: 2019
+  
+---
+
+```{r setup, include=FALSE, results = 'hide'}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+)
+
+nces_number <- '051068001566' # north little rock
+state_abb <- 'AR'
+years <- 2016:2017
+grades <- 3:4
+
+devtools::load_all()
+```
+
+```{r loadData, results = 'hide', include = FALSE}
+school_directory <- get_school_directory(nces_number, max(years))
+
+district_enrollment <- get_district_enrollment(district_leaid_number, years, grades)
+
+district_poverty <- get_district_in_poverty(district_leaid_number, max(years))
+
+state_assessment <- get_state_assessments_by_district(state_fips_code(state_abb), years)
+
+# get district shapefile
+district_shapefile <- tigris::school_districts(state = state_abb, cb = FALSE) %>%
+  # filter for district
+  dplyr::filter(GEOID == district_leaid_number)
+
+district_name <- district_directory$lea_name[1]
+dashboard_title <- stringr::str_c(district_name, " Landscape Analysis")
+
+latest_year <- district_directory$year[[1]]
+district_year <- glue::glue("{latest_year} - {latest_year + 1}")
+
+lowest_grade <- min(grades)
+highest_grade <- max(grades)
+grade_span <- glue::glue("{lowest_grade}-{highest_grade} grades")
+```
+
+<script>
+document.querySelector(".navbar-header > span.navbar-brand").innerHTML = "`r dashboard_title`";
+</script> 
+
+
+District Overview {data-orientation=rows}
+=====================================   
+
+Row
+-----------------------------------------------------------------------
+
+### District Enrollment<br>`r glue::glue("{district_year}<br>{grade_span}")`
+
+```{r}
+# get district enrollment in the needed grades for most recent year
+latest_year_enrollment <- district_enrollment %>%
+  dplyr::filter(race == 'Total', year == max(year)) %>%
+  dplyr::pull(enrollment) %>%
+  as.numeric() %>%
+  scales::comma()
+
+flexdashboard::valueBox(latest_year_enrollment, icon = "fa-child")
+```
+
+### FTE Elementary Teachers in District (all grades)<br>`r district_year`
+
+```{r}
+teachers_elementary <- district_directory$teachers_elementary_fte[[1]] %>%
+  as.numeric() %>%
+  scales::comma()
+
+flexdashboard::valueBox(teachers_elementary, icon = "fa-chalkboard-teacher")
+```
+
+### FTE Secondary Teachers in District (all grades)<br>`r district_year`
+
+```{r}
+teachers_secondary <- district_directory$teachers_secondary_fte[[1]] %>%
+  as.numeric() %>%
+  scales::comma()
+
+flexdashboard::valueBox(teachers_secondary, icon = "fa-chalkboard-teacher")
+```
+
+### Percent of 5-17 year olds in poverty<br>`r max(years)`
+
+```{r}
+percent_students_poverty <-  district_poverty$est_population_5_17_pct[1] %>%
+  scales::percent()
+
+flexdashboard::valueBox(percent_students_poverty, icon = "fa-family")
+```
+
+Row
+-------------------------------------
+
+### District Map {data-width=700}
+
+```{r include = FALSE}
+# must create the map in a different code chunk than the chunk it is printed in
+# this is because sf prints a statement in one of the commands and the only
+# way to suppress the statement is the include the header include = FALSE
+# but, this header prevents the map from showing as well
+district_map <- leaflet_district_schools(district_shapefile, school_directory)
+``` 
+
+```{r}
+district_map
+```
+
+### Cities in District {data-width=200}
+
+```{r citiesTable, include = FALSE, results = 'hide'}
+pop_colname <- glue::glue("**City Pop.<br>{max(years)}**")
+
+cities_table <- table_cities_in_single_district(district_shapefile, state = state_abb, year = max(years)) %>%
+  cities_in_district()
+```
+
+```{r}
+cities_table
+```
