@@ -1,35 +1,3 @@
-#' Vector of state FIPS codes
-#'
-#' @export
-fips_states <- function() {
-  c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
-}
-
-#' Years data is available for each Urban Inst. API data source
-#'
-#' @param data_source The data source for the API. One of 'ccd', 'crdc', 'edfacts', or 'saipe
-#'
-#' @return Vector with the years (as integers) in which the data source is available.
-#'
-#' @export
-data_years_available <- function(data_source) {
-
-  sources <- c('ccd', 'crdc', 'edfacts', 'saipe')
-
-  sources_string <- paste0(sources, collapse = "', '")
-
-  if (!data_source %in% sources) stop(paste0("Data sources must be one of either: '", sources_string, "'"))
-
-  years_available <- list(
-    ccd = 1986:2020,
-    crdc = c(2011, 2013, 2015, 2017),
-    edfacts = 2009:2018,
-    saipe= 1999:2018
-  )
-
-  years_available[[data_source]]
-
-}
 
 #' Base function to import data from the educationdata api
 #'
@@ -199,24 +167,6 @@ convert_to_na <- function(.data, cols) {
 
 }
 
-#' Clean up numeric values of state assessments and calculate number who passed
-#'
-#' @export
-clean_numeric_assessments <- function(.data) {
-
-  .data %>%
-    # clean up numeric columns
-    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~as.numeric(.x))) %>%
-    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~ifelse(.x < 0, NA_real_, .x))) %>%
-    # convert integers to percentages
-    dplyr::mutate(dplyr::across(dplyr::contains("_pct_prof_"), ~(.x / 100))) %>%
-    # calculate number of students who passed
-    dplyr::mutate(
-      read_test_num_pass = round(read_test_num_valid * read_test_pct_prof_midpt, 0),
-      math_test_num_pass = round(math_test_num_valid * math_test_pct_prof_midpt, 0)
-    )
-
-}
 
 #' Common clean up for CRDC data
 #'

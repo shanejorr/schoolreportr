@@ -17,3 +17,7 @@ knit_dashboard('fresno.html', '0614550', 'CA', 2000:2020, 6:12)
 
 
 schoolreportr:::data_years_available('ccd')
+
+
+a <- a %>%
+  distinct(ncessch)
