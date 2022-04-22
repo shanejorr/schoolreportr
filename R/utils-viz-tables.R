@@ -10,15 +10,16 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
   # school coordinates
   school_information <- school_information %>%
     dplyr::mutate(dplyr::across(dplyr::all_of(numeric_cols), ~as.numeric(.))) %>%
-    dplyr::mutate(enrollment = scales::comma(enrollment)) %>%
+    dplyr::mutate(dplyr::across(c(school_name, lea_name, street_location, city_location),
+                   ~stringr::str_to_title(.x))) %>%
+    dplyr::mutate(grade_range = glue::glue("{lowest_grade_offered}-{highest_grade_offered}")) %>%
     sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
     sf::st_transform(4326, quiet = TRUE) %>%
     # create tooltip labels
     dplyr::mutate(tool_tip = glue::glue(
       "<strong>{school_name}</strong><br>
       {lea_name}<br>
-      Grades: {grade_range}<br>
-      Number of teachers: {teachers_fte}<br>
+      Grades in school: {grade_range}<br>
       {street_location}<br>
       {city_location}, {state_location} {zip_location}"
     ))

@@ -1,13 +1,14 @@
 ---
 output: 
-  flex_dashboard:
+  flexdashboard::flex_dashboard:
     vertical_layout: scroll
     
 params:
-  district_leaid_number: '1'
+  nces_num: '1'
   years: 2000:2020
   state_abb: 'NC'
   grades: 6:12
+  org_level: 'schools'
   
 ---
 
@@ -18,9 +19,18 @@ knitr::opts_chunk$set(
   warning = FALSE
 )
 
-devtools::load_all()
+library(glue)
+library(forcats)
+library(stringr)
+library(tigris)
+library(purrr)
+library(dplyr)
+library(highcharter)
+library(schoolreportr)
+library(flexdashboard)
+```
 
-
+```{r parameters}
 nces_num <- c('050306001618', '050306000073') # two high schools in bentonville
 state_abb <- 'AR'
 years <- 2016:2017
@@ -29,19 +39,7 @@ grades <- 11:12
 org_level <- 'schools'
 ```
 
-```{r packages}
-library(glue)
-library(forcats)
-library(stringr)
-library(tigris)
-library(purrr)
-library(dplyr)
-library(highcharter)
-library(flexdashboard)
-```
-
 ```{r loadData, results = 'hide', include = FALSE}
-
 # years data is available
 saipe_years <- data_years_available('saipe')
 ccd_years <- data_years_available('ccd')
@@ -73,25 +71,20 @@ state_assessment <- get_edfacts_state_assessments(org_level, state_fips_code(sta
 district_shapefile <- school_districts(state = state_abb, cb = FALSE) %>%
   # filter for district
   filter(GEOID == district_leaid_number)
+
+dashboard_title <- str_c(school_names, " Landscape Analysis")
 ```
 
-```{r cleanFiles, results = 'hide', include = FALSE}
+```{r results = 'hide', include = FALSE}
+max_edfacts_year <- max(state_assessment$year)
+edfacts_year <- glue("{max_edfacts_year}-{max_edfacts_year}")
 
-num_fte_teachers <- sum(school_directory$teachers_fte)
-
-district_name <- district_directory$lea_name[1]
-dashboard_title <- str_c(district_name, " Landscape Analysis")
-
-latest_year <- district_directory$year[[1]]
-district_year <- glue("{latest_year} - {latest_year + 1}")
-
-edfacts_year <- glue("{max(state_assessment$year)}-{max(state_assessment$year)+1}")
+max_ccd_year <- max(school_directory$year)
+ccd_year <- glue("{max_ccd_year}-{max_ccd_year}")
 
 lowest_grade <- min(grades)
 highest_grade <- max(grades)
 grade_span <- glue("{lowest_grade}-{highest_grade}")
-
-max_assessment_year <- max(state_assessment$year)
 ```
 
 <script>
@@ -105,11 +98,11 @@ District Overview {data-orientation=rows}
 Row
 -----------------------------------------------------------------------
 
-### District Enrollment<br>`r glue("{district_year}<br>Grades {grade_span}")`
+### Enrollment at `r school_names`<br>`r glue("{ccd_year}<br>Grades {grade_span}")`
 
 ```{r}
 # get district enrollment in the needed grades for most recent year
-latest_year_enrollment <- district_enrollment %>%
+latest_year_enrollment <- school_enrollment %>%
   filter(race == 'Total', year == max(years)) %>%
   pull(enrollment) %>%
   as.numeric() %>%
@@ -118,17 +111,17 @@ latest_year_enrollment <- district_enrollment %>%
 valueBox(latest_year_enrollment, icon = "fa-child")
 ```
 
-### FTE Elementary Teachers in District<br>`r glue("{district_year}<br>Grades {grade_span}")`
+### FTE Teachers at `r school_names`<br>`r glue("{ccd_year}<br>Grades {grade_span}")`
 
 ```{r}
-teachers_elementary <- num_fte_teachers %>%
+teachers_elementary <- sum(school_directory$teachers_fte) %>%
   as.numeric() %>%
   scales::comma()
 
 valueBox(teachers_elementary, icon = "fa-chalkboard-teacher")
 ```
 
-### Percent of 5-17 year olds in poverty<br>`r max(saipe_years)`
+### Percent of 5-17 year olds in poverty within district<br>`r max(saipe_years)`
 
 ```{r}
 percent_students_poverty <-  district_poverty$est_population_5_17_pct[1] %>%
@@ -141,11 +134,10 @@ valueBox(percent_students_poverty, icon = "fa-bed")
 
 ```{r}
 # get most recent year for the district of state assessments
-district_assessment_recent_year <-  state_assessment %>%
-  filter(year == !!max_assessment_year, !str_detect(geography, 'Total'), race == 'Total')
+school_assessment_recent_year <-  state_assessment %>%
+  filter(year == !!max_edfacts_year, !str_detect(geography, 'Total'), race == 'Total')
 
-
-math_assess <- district_assessment_recent_year %>%
+math_assess <- school_assessment_recent_year %>%
   pull(math_pct_pass)
 
 math_assess <- scales::percent(math_assess / 100, accuracy = 1)
@@ -156,7 +148,7 @@ valueBox(math_assess, icon = "fa-calculator")
 ### Percent passing reading state assessments<br>`r glue("{edfacts_year}<br>Grades {grade_span}")`
 
 ```{r}
-read_assess <- district_assessment_recent_year %>%
+read_assess <- school_assessment_recent_year %>%
   pull(read_pct_pass)
 
 read_assess <- scales::percent(read_assess / 100, accuracy = 1)
@@ -174,7 +166,7 @@ Row
 # this is because sf prints a statement in one of the commands and the only
 # way to suppress the statement is the include the header include = FALSE
 # but, this header prevents the map from showing as well
-district_map <- schoolreportr::leaflet_district_schools(district_shapefile, school_directory)
+district_map <- leaflet_district_schools(district_shapefile, school_directory)
 ``` 
 
 ```{r}
@@ -186,8 +178,8 @@ district_map
 ```{r citiesTable, include = FALSE, results = 'hide'}
 pop_colname <- glue("**City Pop.<br>{max(years)-1}**")
 
-cities_table <- schoolreportr::table_cities_in_single_district(district_shapefile, state = state_abb) %>% 
-  schoolreportr::cities_in_district()
+cities_table <- table_cities_in_single_district(district_shapefile, state = state_abb) %>% 
+  cities_in_district()
 ```
 
 ```{r}
@@ -203,17 +195,17 @@ Row {data-height=400}
 ### Total Enrollment by Year
 
 ```{r}
-total_enrollment <- district_enrollment %>%
+total_enrollment <- school_enrollment %>%
   filter(race == 'Total')
 
 school_year_x_label <- 'School Year'
 
-plt_tooltip <- paste0("<b>", district_name, ":</b>  {point.y:.0f} students")
+plt_tooltip <- paste0("<b>", school_names, ":</b>  {point.y:.0f} students")
 
 hchart(total_enrollment, "line", hcaes(x = school_year_both, y = enrollment),
                     tooltip = list(pointFormat = plt_tooltip))  %>%
-  schoolreportr::add_title_axis_labels(
-    plt_title = glue("{district_name}\nStudent Enrollment by School Year (grades {grade_span})"),
+  add_title_axis_labels(
+    plt_title = glue("{school_names}\nStudent Enrollment by School Year (grades {grade_span})"),
     plt_x_label = school_year_x_label,
     plt_y_label = glue("Enrollment in grades {grade_span}")
   )
@@ -227,18 +219,15 @@ Row {data-height=400}
 ```{r}
 race_y_var_title <- glue("Percentage Enrollment by Race (grades {grade_span})")
 
-race_enrollment <- schoolreportr::clean_enrollment_by_race(district_enrollment)
-
-district_enrollment %>%
-  schoolreportr::clean_enrollment_by_race() %>%
-  schoolreportr::hc_plot_grouped_line(
+school_enrollment %>%
+  clean_enrollment_by_race() %>%
+  hc_plot_grouped_line(
     x_col = 'school_year_both', y_col = 'percent_race', group_col = 'race', 
     plt_title = NULL, 
     x_var_title = school_year_x_label, y_var_title = race_y_var_title,
     y_percentage = TRUE
   ) %>%
-  schoolreportr::custom_hc_tooltip(create_html_tooltip('race', 'percent_race_clean', 'enrollment'))
-
+  custom_hc_tooltip(create_html_tooltip('race', 'percent_race_clean', 'enrollment'))
 ```
 
 State Assessments {data-orientation=rows}
@@ -251,8 +240,6 @@ Row {data-height=400}
 state_assessment <- state_assessment %>%
   # make sure the different district names are all the same
   mutate(
-    # make sure the different district names are all the same
-    geography = ifelse(!str_detect(geography, 'Total'), !!district_name, geography),
     # percentages for plotting
     read_pct_pass_clean = scales::percent(read_pct_pass / 100, accuracy = 1),
     math_pct_pass_clean = scales::percent(math_pct_pass / 100, accuracy = 1)
@@ -268,13 +255,13 @@ plt_titles <- c('Percent passing math state assessments', 'Percent passing readi
 all_year_plts <- map2(subjects, plt_titles, function(.x, plt_title) {
 
   all_years_total %>%
-    schoolreportr::hc_plot_grouped_line(
+    hc_plot_grouped_line(
       'school_year_both', glue('{.x}_pct_pass'), 'geography', glue("{plt_title} in grades {grade_span}"),
       NULL, 'Percent passing state assessment', y_percentage = TRUE
     ) %>%
-    schoolreportr::custom_hc_tooltip(
-      schoolreportr::create_html_tooltip('geography', glue('{.x}_pct_pass_clean'),
-                                          glue('{.x}_test_num_valid'))
+    custom_hc_tooltip(
+      create_html_tooltip('geography', glue('{.x}_pct_pass_clean'),
+                                       glue('{.x}_test_num_valid'))
     )
 
 })
@@ -298,21 +285,21 @@ Row {data-height=400}
 -----------------------------------------------------------------------
 
 ```{r}
-# get district assessment by race data
-district <- state_assessment %>%
+# get school assessment by race data
+school <- state_assessment %>%
   filter(!str_detect(geography, 'Total'),
-                race != 'Total')
+         race != 'Total')
 
 # line plots of district assessments by race and year
 all_years_race_district <- map2(subjects, plt_titles, function(.x, plt_title) {
 
-  district %>%
-    schoolreportr::hc_plot_grouped_line(
+  school %>%
+    hc_plot_grouped_line(
       'school_year_both', glue('{.x}_pct_pass'), 'race', NULL,
       NULL, glue("{plt_title} in grades {grade_span}"), y_percentage = TRUE
     ) %>%
-    schoolreportr::custom_hc_tooltip(
-      schoolreportr::create_html_tooltip('race', glue('{.x}_pct_pass_clean'),
+    custom_hc_tooltip(
+      create_html_tooltip('race', glue('{.x}_pct_pass_clean'),
                                           glue('{.x}_test_num_valid'))
       )
 
@@ -325,18 +312,18 @@ all_years_race <- state_assessment %>%
 
 all_years_race_total <- map2(subjects, plt_titles, function(.x, plt_title) {
 
-  schoolreportr::hc_plot_grouped_bar(all_years_race, 'race', glue('{.x}_pct_pass'), 'geography', glue("{plt_title} in grades {grade_span}"))
+  hc_plot_grouped_bar(all_years_race, 'race', glue('{.x}_pct_pass'), 'geography', glue("{plt_title} in grades {grade_span}"))
 
 })
 ```
 
-### District Reading State Assessments by Race - Percent Passing
+### School Reading State Assessments by Race - Percent Passing
 
 ```{r}
 all_years_race_district[[2]]
 ```
 
-### District and State Reading Assessments by Race - Percent Passing
+### School and State Reading Assessments by Race - Percent Passing
 
 ```{r}
 all_years_race_total[[2]]
@@ -365,9 +352,9 @@ Community Demographics {data-orientation=rows}
 Row {data-height=350}
 -------------------------------------
 
-```{r}
+```{r results = 'hide'}
 # find the census tracts in the school district
-tracts_in_district <- schoolreportr::census_tracts_in_district(state_abb, district_shapefile)
+tracts_in_district <- census_tracts_in_district(state_abb, district_shapefile)
 ```
 
 ### Racial Composition
@@ -381,21 +368,21 @@ race_popualtion_variables <- c(
   B03002_010 = 'Two or more races', B03002_011 = 'Two or more races'
 )
   
-census_demographics <- schoolreportr::acs_demographic_data(
+census_demographics <- acs_demographic_data(
   names(race_popualtion_variables), state_abb, tracts_in_district$tracts_in_district
   ) %>%
   mutate(variable = recode(variable, !!!race_popualtion_variables)) %>%
-  schoolreportr::calculate_percentages('Total') %>%
-  mutate(variable = schoolreportr::rename_reorder_race_education(variable)) %>%
+  calculate_percentages('Total') %>%
+  mutate(variable = rename_reorder_race_education(variable)) %>%
   arrange(variable)
 
-schoolreportr::hc_plot_grouped_bar(census_demographics, 'variable', 'perc_demo', 'geography', "Racial breakdown of community")
+hc_plot_grouped_bar(census_demographics, 'variable', 'perc_demo', 'geography', "Racial breakdown of community")
 ```
 
 ### Educational Attainment of Population 25 and Over
 
 ```{r}
-census_education <- schoolreportr::educational_attainment(state_abb, tracts_in_district$tracts_in_district, max(years))
+census_education <- educational_attainment(state_abb, tracts_in_district$tracts_in_district, max(years))
 
 ed_order <- unique(census_education$variable)
 
@@ -403,5 +390,5 @@ census_education <- census_education %>%
   mutate(variable = factor(variable, levels = ed_order)) %>%
   arrange(variable)
 
-schoolreportr::hc_plot_grouped_bar(census_education, 'variable', 'perc_demo', 'geography', "Educational attainment of community")
+hc_plot_grouped_bar(census_education, 'variable', 'perc_demo', 'geography', "Educational attainment of community")
 ```

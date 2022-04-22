@@ -1,6 +1,6 @@
 ---
 output: 
-  flex_dashboard:
+  flexdashboard::flex_dashboard:
     vertical_layout: scroll
     
 params:
@@ -363,7 +363,7 @@ Community Demographics {data-orientation=rows}
 Row {data-height=350}
 -------------------------------------
 
-```{r}
+```{r results = 'hide'}
 # find the census tracts in the school district
 tracts_in_district <- schoolreportr::census_tracts_in_district(state_abb, district_shapefile)
 ```

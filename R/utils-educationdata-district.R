@@ -329,15 +329,15 @@ assessment_scores_by_race <- function(state_assessment_data, org_level, nces_num
 #'
 #' Calculate percentage race breakdowns, change race names, reorder race
 #'
-#' @param district_race_enrollment Aataframe with enrollment data by race, created with get_district_enrollment()
+#' @param race_enrollment Data frame with enrollment data by race (school or district), created with get_ccd_enrollment()
 #'
 #' @returns A data frame with percentage race breakdowns by year.
 #'
 #' @export
-clean_enrollment_by_race <- function(district_race_enrollment) {
+clean_enrollment_by_race <- function(race_enrollment) {
 
-  district_race_enrollment %>%
-    dplyr::group_by(leaid, year) %>%
+  race_enrollment %>%
+    dplyr::group_by(year) %>%
     dplyr::mutate(
       total_students = max(enrollment),
       percent_race = enrollment / total_students,

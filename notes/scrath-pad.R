@@ -1,23 +1,14 @@
 # Scratch pad for testing
 
-devtools::load_all()
-
-ak_district <- '3701500'
-
-state_abb <- 'NC'
-
-grades <- 5:7
-
+nces_num <- c('050306001618', '050306000073') # two high schools in bentonville
+state_abb <- 'AR'
 years <- 2016:2017
+grades <- 11:12
+org_level <- 'schools'
+
+output_filename <- 'bville.html'
 
 # enrollment -------------------------------------------------------
 library(schoolreportr)
 
-knit_dashboard('fresno.html', '0614550', 'CA', 2000:2020, 6:12)
-
-
-schoolreportr:::data_years_available('ccd')
-
-
-a <- a %>%
-  distinct(ncessch)
+knit_dashboard(output_filename, org_level, nces_num, years, state_abb, grades)
