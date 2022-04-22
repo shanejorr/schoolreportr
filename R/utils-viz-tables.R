@@ -53,7 +53,7 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
 #' Clean the table of cities in the district and convert it to a gt table
 #'
 #' @export
-cities_in_district <- function(district_cities) {
+cities_in_district <- function(district_cities, pop_colname) {
 
   district_cities %>%
     dplyr::arrange(dplyr::desc(value)) %>%
