@@ -235,6 +235,7 @@ get_edfacts_state_assessments <- function(org_level, fips_code, years, grade = 9
                      source = "edfacts",
                      topic = "assessments",
                      filters = list(
+                       ncessch = nces_num,
                        fips = fips_code,
                        year = edfacts,
                        grade_edfacts = grade
