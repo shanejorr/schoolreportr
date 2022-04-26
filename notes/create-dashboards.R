@@ -23,3 +23,14 @@ for (i in seq.int(nces_num)) {
   knit_dashboard(output_file, org_level, nces_num[i], years, state_abb, grades)
 
 }
+
+# Rochester and Cleveland ----------------------
+
+# get district leaids so we can find al lschools
+# ny_districts <- get_state_school_numbers('school-districts', 'OH', 2020)
+
+roch_leaid <- '3624750'
+cleveland_leaid <- '3904378'
+
+# find all schools in the district
+
