@@ -20,6 +20,7 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
       "<strong>{school_name}</strong><br>
       {lea_name}<br>
       Grades in school: {grade_range}<br>
+      School enrollment: {enrollment}<br>
       {street_location}<br>
       {city_location}, {state_location} {zip_location}"
     ))
@@ -122,7 +123,8 @@ hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title,
   plt <- highcharter::hchart(.data, "line", highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]))  %>%
     highcharter::hc_title(text = plt_title) %>%
     highcharter::hc_xAxis(title = list(text = x_var_title)) %>%
-    highcharter::hc_legend(enabled = TRUE)
+    highcharter::hc_legend(enabled = TRUE) %>%
+    highcharter::hc_exporting(enabled = TRUE)
 
   if (y_percentage) {
 
@@ -150,7 +152,8 @@ hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, y_title) {
     tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
   ) %>%
     highcharter::hc_xAxis(title = list(text = NULL)) %>%
-    plt_hc_percentage(y_title)
+    plt_hc_percentage(y_title) %>%
+    highcharter::hc_exporting(enabled = TRUE)
 
 }
 
@@ -169,7 +172,8 @@ hc_plot_assessments <- function(.data, x_var, y_var, subject) {
     tooltip = list(pointFormat = tool_tip)
   ) %>%
     plt_hc_percentage(y_var_title) %>%
-    highcharter::hc_xAxis(title = NULL)
+    highcharter::hc_xAxis(title = NULL) %>%
+    highcharter::hc_exporting(enabled = TRUE)
 
 }
 
@@ -184,6 +188,7 @@ plt_hc_percentage <- function(plt, y_var_title) {
       title = list(text = y_var_title),
       labels = list(format = '{value}%'),
       min = 0, max = 100
-    )
+    ) %>%
+    highcharter::hc_exporting(enabled = TRUE)
 
 }

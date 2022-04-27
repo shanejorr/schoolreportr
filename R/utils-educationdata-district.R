@@ -192,20 +192,38 @@ get_schools_in_district <- function(leaid, year, grades = 99) {
     filters = list(leaid = leaid, year = ccd_years, school_status = c(1,3,4,5))
   ) %>%
     # make TRUE if school is in grade range, FALSE otherwise
-    dplyr::mutate(in_grade = dplyr::case_when(
-      lowest_grade_offered %in% all_grades ~ TRUE,
-      highest_grade_offered %in% all_grades ~ TRUE,
-      dplyr::between(lowest_grade_offered, min(grades), max(grades)) ~ TRUE,
-      dplyr::between(highest_grade_offered, min(grades), max(grades)) ~ TRUE,
-      (lowest_grade_offered <= min(grades)) & (highest_grade_offered >= min(grades)) ~ TRUE,
-      (lowest_grade_offered <= max(grades)) & (highest_grade_offered >= max(grades)) ~ TRUE,
-      TRUE ~ FALSE
-    )) %>%
+    identify_school_grades(all_grades) %>%
     dplyr::mutate(
       across(contains('grade_offered'), ~as.character(.x)),
       across(contains('grade_offered'), ~dplyr::recode(.x, !!!recode_grades, .default = .x))
     ) %>%
     dplyr::mutate(grade_range = glue::glue("{lowest_grade_offered} to {highest_grade_offered}"))
+
+}
+
+#' Identify if school contains a grade
+#'
+#' NCES data reports grades for schools, but reports it as the lowest and highest grades.
+#' This function takes a vector of grades as input and then returns a boolean of whether the school
+#' contains any of the grades based on the lowest and highest grades.
+#'
+#' @export
+identify_school_grades <- function(.data, vector_of_grades) {
+
+  min_grade <- min(vector_of_grades)
+  max_grade <- max(vector_of_grades)
+
+  .data %>%
+    # make TRUE if school is in grade range, FALSE otherwise
+    dplyr::mutate(in_grade = dplyr::case_when(
+      lowest_grade_offered %in% vector_of_grades ~ TRUE,
+      highest_grade_offered %in% vector_of_grades ~ TRUE,
+      dplyr::between(lowest_grade_offered, min_grade, max_grade) ~ TRUE,
+      dplyr::between(highest_grade_offered, min_grade, max_grade) ~ TRUE,
+      (lowest_grade_offered <= min_grade) & (highest_grade_offered >= min_grade) ~ TRUE,
+      (lowest_grade_offered <= max_grade) & (highest_grade_offered >= max_grade) ~ TRUE,
+      TRUE ~ FALSE
+    ))
 
 }
 
@@ -235,7 +253,6 @@ get_edfacts_state_assessments <- function(org_level, fips_code, years, grade = 9
                      source = "edfacts",
                      topic = "assessments",
                      filters = list(
-                       ncessch = nces_num,
                        fips = fips_code,
                        year = edfacts,
                        grade_edfacts = grade

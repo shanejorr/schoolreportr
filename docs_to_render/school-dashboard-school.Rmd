@@ -44,8 +44,14 @@ if (length(unique(school_directory$leaid)) > 1) stop("All schools must be in the
 
 district_leaid_number <- unique(school_directory$leaid)
 
-school_names <- paste0(school_directory$school_name, collapse = " & ") %>%
-  str_to_title()
+# for school name, use the school if there is only one, otherwise use the district
+if (nces_num == 1) {
+  school_names <- school_directory$school_name[1]
+} else {
+  distric_name <- unique(school_directory$lea_name) %>% str_to_title()
+  if (length(distric_name) > 1) stop("There are more than one districts. You can only have one district")
+  school_names <- paste0(distric_name," Schools")
+}
 
 school_enrollment <- schoolreportr:::get_ccd_enrollment(org_level, nces_num, years, grades)
 
@@ -201,7 +207,8 @@ hchart(total_enrollment, "line", hcaes(x = school_year_both, y = enrollment),
     plt_title = glue("{school_names}\nStudent Enrollment by School Year (grades {grade_span})"),
     plt_x_label = school_year_x_label,
     plt_y_label = glue("Enrollment in grades {grade_span}")
-  )
+  )  %>%
+    highcharter::hc_exporting(enabled = TRUE)
 ```
 
 Row {data-height=400}
