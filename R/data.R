@@ -1,6 +1,6 @@
 #' Directory of school information.
 #'
-#' A dataset containing school directory information such as school name and number, district name and number,
+#' A data set containing school directory information such as school name and number, district name and number,
 #' state, and grades. Data comes from the Common Core of Data, retrieved from the Urban Institute's
 #' Education Data Portal.
 #'
