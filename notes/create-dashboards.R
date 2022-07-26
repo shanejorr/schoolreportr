@@ -10,7 +10,7 @@ org_level <- 'schools'
 # Fresno ---------------------
 nces_num <- c(heaton = '061455001735', williams = '061455011895') # Heaton and Williams
 state_abb <- 'CA'
-grades <- 2:5
+grades <- 3:5
 
 output_filename <- here::here(output_dir, 'Fresno.html')
 
