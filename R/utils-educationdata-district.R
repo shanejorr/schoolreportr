@@ -94,10 +94,7 @@ get_ccd_directory <- function(org_level, nces_num, year) {
       filters = filters
     )
   }) %>%
-    dplyr::mutate(
-      free_or_reduced_lunch = free_lunch + reduced_price_lunch,
-      perc_free_reduced_lunch = free_or_reduced_lunch / enrollment
-    )
+    dplyr::mutate(perc_free_lunch = free_lunch / enrollment)
 
 }
 

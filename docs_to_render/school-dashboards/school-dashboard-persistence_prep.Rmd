@@ -28,12 +28,13 @@ library(dplyr)
 library(highcharter)
 library(schoolreportr)
 library(flexdashboard)
+library(gt)
 
 # Persistance Prep ---------------------
 nces_num <- '360117206648'
 state_abb <- 'NY'
 years <- 2010:2020
-grades <- 0:5
+grades <- c('k', '1', '2', '3', '4')
 org_level <- 'schools'
 ```
 
@@ -68,9 +69,10 @@ dashboard_title <- str_c(school_names, " Landscape Analysis")
 max_ccd_year <- max(school_directory$year)
 ccd_year <- glue("{max_ccd_year}-{max_ccd_year}")
 
-lowest_grade <- min(grades)
-highest_grade <- max(grades)
-grade_span <- glue("{lowest_grade}-{highest_grade}")
+lowest_grade <- grades[1]
+highest_grade <- grades[length(grades)]
+grade_span <- glue("{lowest_grade}-{highest_grade}") %>%
+  str_to_title()
 ```
 
 <script>
@@ -119,4 +121,52 @@ school_enrollment %>%
     y_percentage = TRUE
   ) %>%
   schoolreportr:::custom_hc_tooltip(create_html_tooltip('race', 'percent_race_clean', 'enrollment'))
+```
+
+Row
+-----------------------------------------------------------------------
+
+```{r}
+
+free_lunch <- glue("{school_directory$free_lunch} ({scales::percent(school_directory$perc_free_lunch)})")
+
+misc_info <- tribble(
+  ~item,                                          ~value,
+  "Number of FTE teachers:  ",                     as.character(school_directory$teachers_fte),
+  "Number of students receiving free lunch:  ",    free_lunch
+)
+
+assessment_data <- tribble(
+  ~subject,              ~pers_prep_avg,  ~state_avg,
+  "ELA 3rd Grade",     "18% (7 of 39)",   "28%",
+  "Math 3rd Grade",    "10% (4 of 40)",   "24%"
+)
+```
+
+### Misc. SY 2020-2021 Data
+
+```{r}
+misc_info %>%
+  gt() %>%
+    tab_style(
+      style = list(cell_text(weight = "bold")),
+      locations = cells_body(columns = item)
+    ) %>%
+  tab_options(column_labels.hidden = TRUE)
+```
+
+### ELA and Math Assessment Data
+
+```{r}
+assessment_data %>%
+  gt() %>%
+    tab_style(
+      style = list(cell_text(weight = "bold")),
+      locations = cells_body(columns = subject)
+    ) %>%
+  cols_label(
+    subject = "Subject",
+    pers_prep_avg = "Persistence Prep % Proficient (2020-2021)",
+    state_avg = "NY % Proficient (2019-2020)"
+  )
 ```
