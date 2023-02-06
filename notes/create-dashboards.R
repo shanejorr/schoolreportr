@@ -7,15 +7,22 @@ output_dir <- here::here('notes', 'school-dashboards')
 years <- 2010:2020
 org_level <- 'schools'
 
+# Bentonville -----------------------------
+
+nces_num <- "050306000073"
+state_abb <- 'AR'
+grades <- 9:12
+
+output_filename <- here::here(output_dir, 'Bentonville.html')
+
+knit_dashboard(output_filename, org_level, nces_num, years, state_abb, grades)
+
 # Fresno ---------------------
 nces_num <- c(heaton = '061455001735', williams = '061455011895') # Heaton and Williams
 state_abb <- 'CA'
 grades <- 2:5
 
 output_filename <- here::here(output_dir, 'Fresno.html')
-
-# get all NY schools, so we can find out nces number
-# ca_schools <- get_state_school_numbers(org_level, state_abb, max(years))
 
 knit_dashboard(output_filename, org_level, nces_num[1], years, state_abb, grades)
 

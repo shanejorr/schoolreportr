@@ -45,12 +45,12 @@ if (length(unique(school_directory$leaid)) > 1) stop("All schools must be in the
 district_leaid_number <- unique(school_directory$leaid)
 
 # for school name, use the school if there is only one, otherwise use the district
-if (nces_num == 1) {
-  school_names <- school_directory$school_name[1]
+if (length(nces_num) == 1) {
+  school_names <- stringr::str_to_title(school_directory$school_name)
 } else {
   distric_name <- unique(school_directory$lea_name) %>% str_to_title()
   if (length(distric_name) > 1) stop("There are more than one districts. You can only have one district")
-  school_names <- paste0(distric_name," Schools")
+  school_names <- stringr::str_to_title(paste0(distric_name," Schools"))
 }
 
 school_enrollment <- schoolreportr:::get_ccd_enrollment(org_level, nces_num, years, grades)
