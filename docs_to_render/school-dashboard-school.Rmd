@@ -371,13 +371,60 @@ race_popualtion_variables <- c(
 census_demographics <- schoolreportr:::acs_demographic_data(
   names(race_popualtion_variables), state_abb, tracts_in_district$tracts_in_district
   ) %>%
-  mutate(variable = recode(variable, !!!race_popualtion_variables)) %>%
+  mutate(variable = recode(variable, !!!race_popualtion_variables)) 
+
+census_demographics_total <- census_demographics%>%
   schoolreportr:::calculate_percentages('Total') %>%
   mutate(variable = schoolreportr:::rename_reorder_race_education(variable)) %>%
   arrange(variable)
 
-schoolreportr:::hc_plot_grouped_bar(census_demographics, 'variable', 'perc_demo', 'geography', "Racial breakdown of community")
+# overall racial composition
+schoolreportr:::hc_plot_grouped_bar(census_demographics_total, 'variable', 'perc_demo', 'geography', "Racial breakdown of community")
 ```
+
+### Percentage Black by Census Tract
+
+```{r}
+# calculate percentage pop in each race
+races_to_use <- c('Black / African-American', 'Hispanic / Latinx', 'White')
+
+# make sure total population value is present, because future operations rely on it
+if (!"Total" %in% census_demographics$variable) stop("Population census tract data does not contain total populations.", call. = FALSE)
+
+race_population <- census_demographics %>%
+  filter(str_detect(NAME, 'Tract')) %>%
+  group_by(NAME) %>%
+  mutate(total_estimate = max(estimate), total_moe = max(moe)) %>%
+  ungroup() %>%
+  filter(variable %in% races_to_use) %>%
+  mutate(
+    perc_estimate = estimate / total_estimate,
+    color_pal = leaflet::colorNumeric("Blues", estimate)(estimate),
+    perc_estimate = scales::percent(perc_estimate, accuracy = 1),
+    perc_moe = tidycensus::moe_prop(estimate, total_estimate, moe, total_moe) * 100,
+    across(c('estimate', 'moe', 'perc_moe'), ~round(., 0))
+  )
+
+race_var <- 'White'
+
+black_population <- race_population %>% filter(variable == !!race_var)
+
+labels <- glue::glue(
+  "<strong>{race_var} Population</strong><br/>
+   <strong>{black_population$estimate}</strong> {race_var} residents (+/- {black_population$moe})<br/>
+   <strong>{black_population$perc_estimate}</strong> {race_var} population (+/- {black_population$perc_moe})"
+  ) %>%
+    lapply(htmltools::HTML)
+
+leaflet_census_tracts(
+  tracts_in_district[["shapefiles_tracts_in_district"]], 
+  black_population,
+  district_shapefile$geometry, school_directory, labels
+)
+```
+
+Row {data-height=350}
+-------------------------------------
 
 ### Educational Attainment of Population 25 and Over
 

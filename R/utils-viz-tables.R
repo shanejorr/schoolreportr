@@ -49,6 +49,57 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
 
 }
 
+#' Plot data by census tract using Leaflet
+#'
+#' Leaflet plot showing census tracts within a district a fill color for the tracts based on data included
+#' the parameters.
+#'
+#' @param district_tracts_shapefiles A shape file  with the district tracts, must contain a 'GEOID' column.
+#' @param census_data_by_tract Data frame with data by census tract taht we want to plot. Must contain
+#'      a 'GEOID' column because this column is merged with the shapefile. There should only be one row per GEOID.
+#' @param district_shapefile_for_centroid A shapefile for the school district, so we can compute the district's
+#'      centriod. This centroid is used to center the map,.
+#' @param school_location A data frame containing the latitude and longitude of the school/s. The columns
+#'      for these two data points should be called 'latitude' and 'longitude'.
+#' @param tool_tip_labels Tool tips to use, as HTML.
+#' Example: `glue::glue("<strong>{census_data_by_tract$NAME}</strong> %>% lapply(htmltools::HTML)`
+#'
+#' @export
+leaflet_census_tracts <- function(district_tracts_shapefiles, census_data_by_tract, district_shapefile_for_centroid, school_location, tool_tip_labels) {
+
+  # centroid of district, used to center view of map
+  district_centroid <- sf::st_centroid(district_shapefile$geometry)
+
+  district_tracts_shapefiles %>%
+    left_join(census_data_by_tract, by = c("GEOID")) %>%
+    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+    sf::st_transform(4326, quiet = TRUE) %>%
+    leaflet::leaflet() %>%
+    leaflet::setView(lng = district_centroid[[1]][[1]], lat = district_centroid[[1]][[2]], zoom = 10) %>%
+    leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) %>%
+    leaflet::addPolygons(
+      layerId = 2,
+      weight = 1, smoothFactor = 0.5,
+      opacity = 1.0, fillOpacity = .3,
+      fillColor = ~color_pal,
+      highlightOptions = leaflet::highlightOptions(color = "white", weight = 2, bringToFront = TRUE),
+      color = "#444444",
+      label = tool_tip_labels,
+      labelOptions = leaflet::labelOptions(
+        style = list("font-weight" = "normal", padding = "3px 8px"),
+        textsize = "15px",
+        direction = "auto")
+    ) %>%
+    leaflet::addCircleMarkers(
+      data = school_location,
+      lat = ~latitude,
+      lng = ~longitude,
+      layerId = 1,
+      radius = 6, stroke = FALSE, fillOpacity = 0.5
+    )
+
+}
+
 #' Table of cities
 #'
 #' Clean the table of cities in the district and convert it to a gt table
