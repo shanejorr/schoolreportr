@@ -391,7 +391,7 @@ races_to_use <- c('Black / African-American', 'Hispanic / Latinx', 'White')
 # make sure total population value is present, because future operations rely on it
 if (!"Total" %in% census_demographics$variable) stop("Population census tract data does not contain total populations.", call. = FALSE)
 
-race_population <- census_demographics %>%
+all_race_population <- census_demographics %>%
   filter(str_detect(NAME, 'Tract')) %>%
   group_by(NAME) %>%
   mutate(total_estimate = max(estimate), total_moe = max(moe)) %>%
@@ -407,7 +407,7 @@ race_population <- census_demographics %>%
 
 race_var <- 'White'
 
-black_population <- race_population %>% filter(variable == !!race_var)
+specific_race_population <- all_race_population %>% filter(variable == !!race_var)
 
 labels <- glue::glue(
   "<strong>{race_var} Population</strong><br/>
