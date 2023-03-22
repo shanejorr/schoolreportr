@@ -411,14 +411,14 @@ specific_race_population <- all_race_population %>% filter(variable == !!race_va
 
 labels <- glue::glue(
   "<strong>{race_var} Population</strong><br/>
-   <strong>{black_population$estimate}</strong> {race_var} residents (+/- {black_population$moe})<br/>
-   <strong>{black_population$perc_estimate}</strong> {race_var} population (+/- {black_population$perc_moe})"
+   <strong>{specific_race_population$estimate}</strong> {race_var} residents (+/- {specific_race_population$moe})<br/>
+   <strong>{specific_race_population$perc_estimate}</strong> {race_var} population (+/- {specific_race_population$perc_moe})"
   ) %>%
     lapply(htmltools::HTML)
 
 leaflet_census_tracts(
   tracts_in_district[["shapefiles_tracts_in_district"]], 
-  black_population,
+  specific_race_population,
   district_shapefile$geometry, school_directory, labels
 )
 ```
