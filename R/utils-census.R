@@ -102,3 +102,50 @@ get_state_fips <- function(state_abbreviation) {
     unique() %>%
     as.numeric()
 }
+
+#' Create data set with racial population and percentage breakdowns by census tracts
+#'
+#' @param .data Data set containing imported census demographic data created with `acs_demographic_data()`
+#' @param races_to_use Races that we want to include in the data, as a vector of strings.
+#'
+#' @keywords internal
+acs_tracts_race <- function(.data) {
+
+  .data %>%
+    dplyr::filter(stringr::str_detect(NAME, 'Tract')) %>%
+    dplyr::group_by(NAME) %>%
+    dplyr::mutate(total_estimate = max(estimate), total_moe = max(moe)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(variable %in% !!races_to_use) %>%
+    dplyr::mutate(
+      perc_estimate = estimate / total_estimate,
+      color_pal = leaflet::colorNumeric("Blues", estimate)(estimate),
+      perc_estimate = scales::percent(perc_estimate, accuracy = 1),
+      perc_moe = tidycensus::moe_prop(estimate, total_estimate, moe, total_moe) * 100,
+      dplyr::across(c('estimate', 'moe', 'perc_moe'), ~round(., 0))
+    )
+
+}
+
+
+#' Create choropath of census tracts and racial brakdowns
+#'
+#' @keywords internal
+choropath_tracts_race <- function(.data, race) {
+
+  specific_race_population <- .data %>% filter(variable == !!race)
+
+  labels <- glue::glue(
+    "<strong>{race} Population</strong><br/>
+   <strong>{specific_race_population$estimate}</strong> {race} residents (+/- {specific_race_population$moe})<br/>
+   <strong>{specific_race_population$perc_estimate}</strong> {race} population (+/- {specific_race_population$perc_moe})"
+  ) %>%
+    lapply(htmltools::HTML)
+
+  leaflet_census_tracts(
+    tracts_in_district[["shapefiles_tracts_in_district"]],
+    specific_race_population,
+    district_shapefile$geometry, school_directory, labels
+  )
+
+}

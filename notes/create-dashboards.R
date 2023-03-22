@@ -11,7 +11,7 @@ org_level <- 'schools'
 
 nces_num <- "050306000073"
 state_abb <- 'AR'
-grades <- 9:12
+grades <- 11
 
 output_filename <- here::here(output_dir, 'Bentonville.html')
 
