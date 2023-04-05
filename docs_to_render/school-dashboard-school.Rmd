@@ -31,16 +31,14 @@ library(flexdashboard)
 
 years <- 2010:2020
 org_level <- 'schools'
-
-
-
 nces_num <- "050306000073"
 state_abb <- 'AR'
 grades <- 11
 
+devtools::load_all()
 ```
 
-```{r loadData, results = 'hide', include = FALSE}
+```{r loadData, results = 'hide', include = FALSE, cache = TRUE}
 # years data is available
 saipe_years <- schoolreportr:::data_years_available('saipe')
 ccd_years <- schoolreportr:::data_years_available('ccd')
@@ -84,7 +82,7 @@ district_shapefile <- school_districts(state = state_abb, cb = FALSE) %>%
 dashboard_title <- str_c(school_names, " Landscape Analysis")
 ```
 
-```{r results = 'hide', include = FALSE}
+```{r results = 'hide', include = FALSE, cache = TRUE}
 max_edfacts_year <- max(state_assessment$year)
 edfacts_year <- glue("{max_edfacts_year}-{max_edfacts_year}")
 
@@ -109,7 +107,7 @@ Row
 
 ### Enrollment at `r school_names`<br>`r glue("{ccd_year}<br>Grades {grade_span}")`
 
-```{r}
+```{r, cache = TRUE}
 # get school enrollment in the needed grades for most recent year
 latest_year_enrollment <- school_enrollment %>%
   filter(race == 'Total', year == max(years)) %>%
@@ -184,7 +182,7 @@ district_map
 
 ### Cities in District {data-width=200}
 
-```{r citiesTable, include = FALSE, results = 'hide'}
+```{r citiesTable, include = FALSE, results = 'hide', cache = TRUE}
 pop_colname <- glue("**City Pop.<br>{max(years)-1}**")
 
 cities_table <- schoolreportr:::table_cities_in_single_district(district_shapefile, state = state_abb) %>% 
@@ -362,14 +360,14 @@ Community Demographics {data-orientation=rows}
 Row {data-height=350}
 -------------------------------------
 
-```{r results = 'hide'}
+```{r results = 'hide', cache = TRUE}
 # find the census tracts in the school district
 tracts_in_district <- schoolreportr:::census_tracts_in_district(state_abb, district_shapefile)
 ```
 
 ### Racial Composition
 
-```{r}
+```{r, cache = TRUE}
 race_popualtion_variables <- c(
   B03002_001 = 'Total',
   B03002_004 = 'Black / African-American', B03002_012 = 'Hispanic / Latinx',
@@ -401,7 +399,7 @@ races_to_use <- c('Black / African-American', 'Hispanic / Latinx', 'White')
 # make sure total population value is present, because future operations rely on it
 if (!"Total" %in% census_demographics$variable) stop("Population census tract data does not contain total populations.", call. = FALSE)
 
-all_race_population <- acs_tracts_race(census_demographics, races_to_use)
+all_race_population <- schoolreportr:::acs_tracts_race(census_demographics, races_to_use)
 
 schoolreportr:::choropath_tracts_race(all_race_population, 'Black / African-American')
 ```
@@ -426,7 +424,7 @@ Row {data-height=350}
 
 ### Educational Attainment of Population 25 and Over
 
-```{r}
+```{r, cache = TRUE}
 census_education <- schoolreportr:::educational_attainment(state_abb, tracts_in_district$tracts_in_district, max(years))
 
 ed_order <- unique(census_education$variable)

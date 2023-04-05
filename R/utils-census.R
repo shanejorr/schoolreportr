@@ -109,7 +109,7 @@ get_state_fips <- function(state_abbreviation) {
 #' @param races_to_use Races that we want to include in the data, as a vector of strings.
 #'
 #' @keywords internal
-acs_tracts_race <- function(.data) {
+acs_tracts_race <- function(.data, races_to_use) {
 
   .data %>%
     dplyr::filter(stringr::str_detect(NAME, 'Tract')) %>%
