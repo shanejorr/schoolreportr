@@ -28,6 +28,16 @@ library(dplyr)
 library(highcharter)
 library(schoolreportr)
 library(flexdashboard)
+
+years <- 2010:2020
+org_level <- 'schools'
+
+
+
+nces_num <- "050306000073"
+state_abb <- 'AR'
+grades <- 11
+
 ```
 
 ```{r loadData, results = 'hide', include = FALSE}
