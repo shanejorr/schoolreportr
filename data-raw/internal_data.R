@@ -7,8 +7,6 @@ devtools::load_all()
 # get each individual race and all races (99)
 race_to_use <- c(seq(1, 9), 99)
 
-for (x in fips_states()){
-
 state_assessment <- educationdata::get_education_data(level = "school-districts",
                                   source = "edfacts",
                                   topic = "assessments",
@@ -20,30 +18,6 @@ state_assessment <- educationdata::get_education_data(level = "school-districts"
                                   subtopic = list("race"),
                                   add_labels = TRUE
                         )
-
-state_assessments <- bind_rows(state_assessments, single_state)
-
-}
-##################################################
-
-data(school_directory)
-
-states <- school_directory %>%
-  dplyr::select(ncessch, state_location)
-
-rm(school_directory)
-
-# group ncessch numbers by state so we can import by state
-grouped_states <- states %>%
-  group_by(state_location) %>%
-  group_split(.keep = TRUE)
-
-#crdc_enroll_race <- get_eddata_topic_subtopic(NULL, crdc_year, source = 'crdc', topic = "enrollment", subtopic = c("race", "sex")) %>%
-#  clean_crdc('enrollment_crdc')
-
-#readr::write_rds(state_enrol_race, 'crdc_enroll_race.rds')
-
-#crdc_enroll_race <- readr::read_rds('crdc_enroll_race.rds')
 
 # state sat / act participation -----------------
 
@@ -68,8 +42,6 @@ for (x in fips_states()){
 
 }
 
-#readr::write_rds(state_test_participation, 'state_test_part.rds')
-
 # lep status -------------------------------------------
 
 state_lep <- tibble()
@@ -91,8 +63,6 @@ for (x in fips_states()){
   state_lep <- bind_rows(state_lep, single_state)
 
 }
-
-#readr::write_rds(state_lep, 'state_lep.rds')
 
 # state assessments ------------------------------------------------
 
@@ -122,8 +92,6 @@ for (x in fips_states()){
 
 }
 
-#readr::write_rds(state_assessments, 'state_assessments.rds')
-
 # enrollment by race------------------------------------------------
 
 enrollment_race <- tibble()
@@ -145,9 +113,16 @@ for (x in fips_states()){
 
 }
 
-#readr::write_rds(enrollment_race, 'enrollment_race.rds')
+# get state fips codes ------------------
 
-usethis::use_data(state_test_participation, state_lep, state_assessments,enrollment_race, internal= TRUE, overwrite = TRUE)
+fips_codes <- tidycensus:::fips_codes |>
+  dplyr::distinct(state, state_code)
+  # dplyr::filter(.data$state == !!state_abbreviation) |>
+  # dplyr::pull(.data$state_code) |>
+  # unique() |>
+  # as.numeric()
+
+usethis::use_data(state_test_participation, state_lep, state_assessments,enrollment_race,fips_codes, internal= TRUE, overwrite = TRUE, compress = 'xz')
 
 
 # graduation rates ------------------------------------------------

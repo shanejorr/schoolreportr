@@ -21,9 +21,9 @@ data_years_available <- function(data_source) {
   if (!data_source %in% sources) stop(paste0("Data sources must be one of either: '", sources_string, "'"))
 
   years_available <- list(
-    ccd = 1986:2020,
+    ccd = 1986:2021,
     crdc = c(2011, 2013, 2015, 2017),
-    edfacts = 2009:2018,
+    edfacts = c(2009:2018, 2020),
     saipe= 1999:2018
   )
 
@@ -57,9 +57,38 @@ check_level <- function(level) {
 #' @keywords internal
 convert_to_sy <- function(years_col) {
 
-  school_years_col <- glue::glue("{years_col}-{years_col+1}")
+  school_years_col <- glue::glue("{.data$years_col}-{.data$years_col+1}")
 
-  return(forcats::fct_reorder(school_years_col, years_col))
+  return(forcats::fct_reorder(.data$school_years_col, .data$years_col))
+
+}
+
+#' Get a data frame with all schools from a state along with their key information
+#'
+#' Returns a data frame of all schools in a state, along with their nces number, leaid,
+#' district, and address. This information is useful to find a school's nces number for
+#' use in `school_report()`.
+#'
+#' @param state_abbreviation The two letter state abbbreviation on the state that
+#'      you want to show all schools for.
+#'
+#' @returns A data frame showing all schools in a state, along with key identifying information.
+#'
+#' @export
+school_nces_numbers <- function(state_abbreviation) {
+
+  max_year <- max(schoolreportr::data_years_available('ccd'))
+
+  state_abbreviation <- stringr::str_to_upper(state_abbreviation)
+
+  educationdata::get_education_data(
+    level = 'schools',
+    source = "ccd",
+    topic = "directory",
+    filters = list(year = max_year, state_location = state_abbreviation)
+  ) |>
+    dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'lea_name', 'city_location', 'state_location'))) |>
+    dplyr::mutate(dplyr::across(c(dplyr::ends_with('name'), 'city_location'), ~stringr::str_to_title(.x)))
 
 }
 
@@ -67,7 +96,8 @@ convert_to_sy <- function(years_col) {
 #'
 #' @param org_level The level to return the results. This is the 'level' parameter in the API.
 #'      One of either 'schools' or 'school-district'
-#' @param nces_num The school's LEAID number or NCES number, as a string.
+#' @param nces_num The school's LEAID number or NCES number, as a string. Can use multiple
+#'     schools or districts by combining all numbers in a vector.
 #' @param year The years from which you want to retrieve data. No data will be returned if data
 #'      is not available for the year.
 #'
@@ -78,7 +108,7 @@ get_ccd_directory <- function(org_level, nces_num, year) {
 
   check_level(org_level)
 
-  map_df(nces_num, function(x) {
+  purrr::map(nces_num, function(x) {
 
     if (org_level == 'schools') {
       filters <- list(ncessch = x, year = year)
@@ -93,8 +123,9 @@ get_ccd_directory <- function(org_level, nces_num, year) {
       topic = "directory",
       filters = filters
     )
-  }) %>%
-    dplyr::mutate(perc_free_lunch = free_lunch / enrollment)
+  }) |>
+    purrr::list_rbind() |>
+    dplyr::mutate(perc_free_lunch = .data$free_lunch / .data$enrollment)
 
 }
 
@@ -114,7 +145,7 @@ get_ccd_enrollment <- function(org_level, nces_num, years, grades) {
 
   check_level(org_level)
 
-  enrollment <- map_df(nces_num, function(x) {
+  enrollment <- purrr::map(nces_num, function(x) {
 
     if (org_level == 'schools') {
       filters <- list(ncessch = x, year = years, grade = grades)
@@ -132,14 +163,15 @@ get_ccd_enrollment <- function(org_level, nces_num, years, grades) {
       add_labels = TRUE
     )
 
-  }) %>%
-    dplyr::group_by(year, race) %>%
-    dplyr::summarize(enrollment = sum(enrollment, na.rm = TRUE), .groups = 'drop')
+  }) |>
+    purrr::list_rbind() |>
+    dplyr::group_by_at(c('year', 'race'))  |>
+    dplyr::summarize(enrollment = sum(.data$enrollment, na.rm = TRUE), .groups = 'drop')
 
   enrollment$school_year_both <- convert_to_sy(enrollment$year)
 
-  enrollment %>%
-    arrange(school_year_both, race)
+  enrollment |>
+    dplyr::arrange(.data$school_year_both, .data$race)
 
 }
 
@@ -187,14 +219,14 @@ get_schools_in_district <- function(leaid, year, grades = 99) {
     source = "ccd",
     topic = "directory",
     filters = list(leaid = leaid, year = ccd_years, school_status = c(1,3,4,5))
-  ) %>%
+  ) |>
     # make TRUE if school is in grade range, FALSE otherwise
-    identify_school_grades(all_grades) %>%
+    identify_school_grades(all_grades) |>
     dplyr::mutate(
-      across(contains('grade_offered'), ~as.character(.x)),
-      across(contains('grade_offered'), ~dplyr::recode(.x, !!!recode_grades, .default = .x))
-    ) %>%
-    dplyr::mutate(grade_range = glue::glue("{lowest_grade_offered} to {highest_grade_offered}"))
+      dplyr::across(dplyr::contains('grade_offered'), ~as.character(.x)),
+      dplyr::across(dplyr::contains('grade_offered'), ~dplyr::recode(.x, !!!recode_grades, .default = .x))
+    ) |>
+    dplyr::mutate(grade_range = glue::glue("{.data$lowest_grade_offered} to {.data$highest_grade_offered}"))
 
 }
 
@@ -210,15 +242,15 @@ identify_school_grades <- function(.data, vector_of_grades) {
   min_grade <- min(vector_of_grades)
   max_grade <- max(vector_of_grades)
 
-  .data %>%
+  .data |>
     # make TRUE if school is in grade range, FALSE otherwise
     dplyr::mutate(in_grade = dplyr::case_when(
-      lowest_grade_offered %in% vector_of_grades ~ TRUE,
-      highest_grade_offered %in% vector_of_grades ~ TRUE,
-      dplyr::between(lowest_grade_offered, min_grade, max_grade) ~ TRUE,
-      dplyr::between(highest_grade_offered, min_grade, max_grade) ~ TRUE,
-      (lowest_grade_offered <= min_grade) & (highest_grade_offered >= min_grade) ~ TRUE,
-      (lowest_grade_offered <= max_grade) & (highest_grade_offered >= max_grade) ~ TRUE,
+      .data$lowest_grade_offered %in% vector_of_grades ~ TRUE,
+      .data$highest_grade_offered %in% vector_of_grades ~ TRUE,
+      dplyr::between(.data$lowest_grade_offered, min_grade, max_grade) ~ TRUE,
+      dplyr::between(.data$highest_grade_offered, min_grade, max_grade) ~ TRUE,
+      (.data$lowest_grade_offered <= min_grade) & (.data$highest_grade_offered >= min_grade) ~ TRUE,
+      (.data$lowest_grade_offered <= max_grade) & (.data$highest_grade_offered >= max_grade) ~ TRUE,
       TRUE ~ FALSE
     ))
 
@@ -256,7 +288,7 @@ get_edfacts_state_assessments <- function(org_level, fips_code, years, grade = 9
                       ),
                      subtopic = list("race"),
                      add_labels = TRUE
-                    ) %>%
+                    ) |>
     clean_numeric_assessments()
 
 }
@@ -267,16 +299,16 @@ get_edfacts_state_assessments <- function(org_level, fips_code, years, grade = 9
 #' @export
 clean_numeric_assessments <- function(.data) {
 
-  .data %>%
+  .data |>
     # clean up numeric columns
-    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~as.numeric(.x))) %>%
-    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~ifelse(.x < 0, NA_real_, .x))) %>%
+    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~as.numeric(.x))) |>
+    dplyr::mutate(dplyr::across(dplyr::contains("_test_"), ~ifelse(.x < 0, NA_real_, .x))) |>
     # convert integers to percentages
-    dplyr::mutate(dplyr::across(dplyr::contains("_pct_prof_"), ~(.x / 100))) %>%
+    dplyr::mutate(dplyr::across(dplyr::contains("_pct_prof_"), ~(.x / 100))) |>
     # calculate number of students who passed
     dplyr::mutate(
-      read_test_num_pass = round(read_test_num_valid * read_test_pct_prof_midpt, 0),
-      math_test_num_pass = round(math_test_num_valid * math_test_pct_prof_midpt, 0)
+      read_test_num_pass = round(.data$read_test_num_valid * .data$read_test_pct_prof_midpt, 0),
+      math_test_num_pass = round(.data$math_test_num_valid * .data$math_test_pct_prof_midpt, 0)
     )
 
 }
@@ -289,12 +321,12 @@ clean_numeric_assessments <- function(.data) {
 #' @export
 aggregate_assessment <- function(.data, grouping_vars) {
 
-  .data %>%
-    dplyr::group_by_at(grouping_vars) %>%
-    dplyr::summarize(dplyr::across(dplyr::contains('_num_'), ~sum(.x, na.rm = TRUE)), .groups = 'drop') %>%
+  .data |>
+    dplyr::group_by_at(grouping_vars) |>
+    dplyr::summarize(dplyr::across(dplyr::contains('_num_'), ~sum(.x, na.rm = TRUE)), .groups = 'drop') |>
     dplyr::mutate(
-      read_pct_pass = (read_test_num_pass / read_test_num_valid) * 100,
-      math_pct_pass = (math_test_num_pass / math_test_num_valid) * 100
+      read_pct_pass = (.data$read_test_num_pass / .data$read_test_num_valid) * 100,
+      math_pct_pass = (.data$math_test_num_pass / .data$math_test_num_valid) * 100
     )
 
 }
@@ -321,22 +353,22 @@ assessment_scores_by_race <- function(state_assessment_data, org_level, nces_num
   geography_id <- if (org_level == 'schools') 'school_name' else 'lea_name'
 
   # calculate district scores
-  district <- state_assessment_data %>%
-    dplyr::filter(.data[[filter_col]] %in% !!nces_num) %>%
-    aggregate_assessment(c('year', 'race')) %>%
+  district <- state_assessment_data |>
+    dplyr::filter(.data[[filter_col]] %in% !!nces_num) |>
+    aggregate_assessment(c('year', 'race')) |>
     dplyr::mutate(geography = 'schools / districts')
 
   # calcualte state scores
-  state_average_assessment <- state_assessment_data %>%
-    aggregate_assessment(c('year', 'race')) %>%
+  state_average_assessment <- state_assessment_data |>
+    aggregate_assessment(c('year', 'race')) |>
     dplyr::mutate(geography = 'state total')
 
-  district %>%
-    dplyr::bind_rows(state_average_assessment) %>%
+  district |>
+    dplyr::bind_rows(state_average_assessment) |>
     # rename racial categories and relevel
-    dplyr::mutate(race = rename_reorder_race_education(race)) %>%
-    dplyr::mutate(school_year_both = convert_to_sy(year)) %>%
-    arrange(school_year_both, race)
+    dplyr::mutate(race = rename_reorder_race_education(.data$race)) |>
+    dplyr::mutate(school_year_both = convert_to_sy(.data$year)) |>
+    dplyr::arrange(.data$school_year_both, .data$race)
 
 }
 
@@ -351,16 +383,16 @@ assessment_scores_by_race <- function(state_assessment_data, org_level, nces_num
 #' @export
 clean_enrollment_by_race <- function(race_enrollment) {
 
-  race_enrollment %>%
-    dplyr::group_by(year) %>%
+  race_enrollment |>
+    dplyr::group_by(.data$year) |>
     dplyr::mutate(
-      total_students = max(enrollment),
-      percent_race = enrollment / total_students,
-      percent_race_clean = scales::percent(percent_race, accuracy = 1),
-      percent_race = percent_race * 100,
-      race = rename_reorder_race_education(race)
-    ) %>%
-    dplyr::filter(race != 'Total') %>%
+      total_students = max(.data$enrollment),
+      percent_race = .data$enrollment / .data$total_students,
+      percent_race_clean = scales::percent(.data$percent_race, accuracy = 1),
+      percent_race = .data$percent_race * 100,
+      race = rename_reorder_race_education(.data$race)
+    ) |>
+    dplyr::filter(.data$race != 'Total') |>
     dplyr::ungroup()
 }
 
@@ -403,11 +435,11 @@ get_state_school_numbers <- function(org_level, state_abb, year) {
   )
 
   if (org_level == 'school-districts') {
-    org_details <- org_details %>%
-        dplyr::select(leaid, lea_name, city_location, number_of_schools, enrollment)
+    org_details <- org_details |>
+        dplyr::select(dplyr::all_of('leaid', 'lea_name', 'city_location', 'number_of_schools', 'enrollment'))
   } else if (org_level == 'schools') {
-    org_details <- org_details %>%
-      dplyr::select(ncessch, leaid, school_name, city_location, lowest_grade_offered, highest_grade_offered, enrollment)
+    org_details <- org_details |>
+      dplyr::select(dplyr::all_of(c('ncessch', 'leaid, school_name', 'city_location', 'lowest_grade_offered', 'highest_grade_offered', 'enrollment')))
   } else {
     stop()
   }

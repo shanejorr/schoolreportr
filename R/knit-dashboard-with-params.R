@@ -1,10 +1,10 @@
 #' Create district flexdashboard for a given school district
 #'
 #' @export
-knit_dashboard <- function(output_filename, org_level, nces_num, years, state_abb, grades) {
+school_report <- function(output_filename, org_level, nces_num, years, state_abb, grades) {
 
   rmarkdown::render(
-    input = here::here("docs_to_render/school-dashboard-school.Rmd"),
+    input = paste0(system.file(package = "mypackage"), "/rmd/template-school.Rmd"),
     output_format = 'flexdashboard::flex_dashboard',
     output_file = here::here(output_filename),
     params = list(

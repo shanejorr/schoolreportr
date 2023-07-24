@@ -8,21 +8,21 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
   numeric_cols <- c('latitude', 'longitude', 'free_or_reduced_price_lunch', 'enrollment')
 
   # school coordinates
-  school_information <- school_information %>%
-    dplyr::mutate(dplyr::across(dplyr::all_of(numeric_cols), ~as.numeric(.))) %>%
-    dplyr::mutate(dplyr::across(c(school_name, lea_name, street_location, city_location),
-                   ~stringr::str_to_title(.x))) %>%
-    dplyr::mutate(grade_range = glue::glue("{lowest_grade_offered}-{highest_grade_offered}")) %>%
-    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
-    sf::st_transform(4326, quiet = TRUE) %>%
+  school_information <- school_information |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(numeric_cols), ~as.numeric(.))) |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(c('school_name', 'lea_name', 'street_location', 'city_location')),
+                   ~stringr::str_to_title(.x))) |>
+    dplyr::mutate(grade_range = glue::glue("{.data$lowest_grade_offered}-{.data$highest_grade_offered}")) |>
+    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
+    sf::st_transform(4326, quiet = TRUE) |>
     # create tooltip labels
     dplyr::mutate(tool_tip = glue::glue(
-      "<strong>{school_name}</strong><br>
-      {lea_name}<br>
-      Grades in school: {grade_range}<br>
-      School enrollment: {enrollment}<br>
-      {street_location}<br>
-      {city_location}, {state_location} {zip_location}"
+      "<strong>{.data$school_name}</strong><br>
+      {.data$lea_name}<br>
+      Grades in school: {.data$grade_range}<br>
+      School enrollment: {.data$enrollment}<br>
+      {.data$street_location}<br>
+      {.data$city_location}, {.data$state_location} {.data$zip_location}"
     ))
 
   tooltip_labels <- as.list(school_information$tool_tip)
@@ -31,15 +31,15 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
   district_centroid <- sf::st_centroid(district_shapefile$geometry)
 
   # map
-  district_shapefile %>%
-    leaflet::leaflet() %>%
-    leaflet::setView(lng = district_centroid[[1]][[1]], lat = district_centroid[[1]][[2]], zoom = 10) %>%
-    leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) %>%
+  district_shapefile |>
+    leaflet::leaflet() |>
+    leaflet::setView(lng = district_centroid[[1]][[1]], lat = district_centroid[[1]][[2]], zoom = 10) |>
+    leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
     leaflet::addPolygons(
       color = "#444444", weight = 1, smoothFactor = 0.5,
       opacity = 1.0, fillOpacity = .3,
       layerId = 1
-    ) %>%
+    ) |>
     leaflet::addCircleMarkers(
       data = school_information,
       layerId = 2,
@@ -62,21 +62,21 @@ leaflet_district_schools <- function(district_shapefile, school_information) {
 #' @param school_location A data frame containing the latitude and longitude of the school/s. The columns
 #'      for these two data points should be called 'latitude' and 'longitude'.
 #' @param tool_tip_labels Tool tips to use, as HTML.
-#' Example: `glue::glue("<strong>{census_data_by_tract$NAME}</strong> %>% lapply(htmltools::HTML)`
+#' Example: `glue::glue("<strong>{census_data_by_tract$NAME}</strong> |> lapply(htmltools::HTML)`
 #'
 #' @export
 leaflet_census_tracts <- function(district_tracts_shapefiles, census_data_by_tract, district_shapefile_for_centroid, school_location, tool_tip_labels) {
 
   # centroid of district, used to center view of map
-  district_centroid <- sf::st_centroid(district_shapefile$geometry)
+  district_centroid <- sf::st_centroid(district_tracts_shapefiles$geometry)
 
-  district_tracts_shapefiles %>%
-    left_join(census_data_by_tract, by = c("GEOID")) %>%
-    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
-    sf::st_transform(4326, quiet = TRUE) %>%
-    leaflet::leaflet() %>%
-    leaflet::setView(lng = district_centroid[[1]][[1]], lat = district_centroid[[1]][[2]], zoom = 10) %>%
-    leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) %>%
+  district_tracts_shapefiles |>
+    dplyr::left_join(census_data_by_tract, by = c("GEOID")) |>
+    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
+    sf::st_transform(4326, quiet = TRUE) |>
+    leaflet::leaflet() |>
+    leaflet::setView(lng = district_centroid[[1]][[1]], lat = district_centroid[[1]][[2]], zoom = 10) |>
+    leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
     leaflet::addPolygons(
       layerId = 2,
       weight = 1, smoothFactor = 0.5,
@@ -89,7 +89,7 @@ leaflet_census_tracts <- function(district_tracts_shapefiles, census_data_by_tra
         style = list("font-weight" = "normal", padding = "3px 8px"),
         textsize = "15px",
         direction = "auto")
-    ) %>%
+    ) |>
     leaflet::addCircleMarkers(
       data = school_location,
       lat = ~latitude,
@@ -107,16 +107,16 @@ leaflet_census_tracts <- function(district_tracts_shapefiles, census_data_by_tra
 #' @export
 cities_in_district <- function(district_cities, pop_colname) {
 
-  district_cities %>%
-    dplyr::arrange(dplyr::desc(value)) %>%
+  district_cities |>
+    dplyr::arrange(dplyr::desc(.data$value)) |>
     dplyr::mutate(
-      NAME = stringr::str_remove(NAME, " city, .*"),
-      value = scales::comma(value)
-    ) %>%
-    gt::gt() %>%
+      NAME = stringr::str_remove(.data$NAME, " city, .*"),
+      value = scales::comma(.data$value)
+    ) |>
+    gt::gt() |>
     gt::cols_label(
       NAME = gt::md("**City Name**"),
-      value = gt::md(pop_colname)
+      value = gt::md(.data$pop_colname)
     )
 
 }
@@ -142,7 +142,7 @@ create_html_tooltip <- function(group_color, y_text, total_number) {
 #' @export
 custom_hc_tooltip <- function(plt, tool_tip_html) {
 
-  plt %>%
+  plt |>
     highcharter::hc_tooltip(
       pointFormat = tool_tip_html,
       crosshairs = TRUE,
@@ -158,9 +158,9 @@ custom_hc_tooltip <- function(plt, tool_tip_html) {
 #' @export
 add_title_axis_labels <- function(plt, plt_title, plt_x_label = 'School Year', plt_y_label) {
 
-  plt %>%
-    highcharter::hc_title(text = plt_title) %>%
-    highcharter::hc_xAxis(title = list(text = plt_x_label)) %>%
+  plt |>
+    highcharter::hc_title(text = plt_title) |>
+    highcharter::hc_xAxis(title = list(text = plt_x_label)) |>
     highcharter::hc_yAxis(title = list(text = plt_y_label))
 
 }
@@ -171,20 +171,20 @@ add_title_axis_labels <- function(plt, plt_title, plt_x_label = 'School Year', p
 hc_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title,
                                  x_var_title, y_var_title, y_percentage = TRUE) {
 
-  plt <- highcharter::hchart(.data, "line", highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]))  %>%
-    highcharter::hc_title(text = plt_title) %>%
-    highcharter::hc_xAxis(title = list(text = x_var_title)) %>%
-    highcharter::hc_legend(enabled = TRUE) %>%
+  plt <- highcharter::hchart(.data, "line", highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]))  |>
+    highcharter::hc_title(text = plt_title) |>
+    highcharter::hc_xAxis(title = list(text = x_var_title)) |>
+    highcharter::hc_legend(enabled = TRUE) |>
     highcharter::hc_exporting(enabled = TRUE)
 
   if (y_percentage) {
 
-    plt <- plt %>%
+    plt <- plt |>
       plt_hc_percentage(y_var_title)
 
   } else {
 
-    plt <- plt %>% hc_yAxis(title = list(text = y_var_title))
+    plt <- plt |> highcharter::hc_yAxis(title = list(text = y_var_title))
 
   }
 
@@ -201,9 +201,9 @@ hc_plot_grouped_bar <- function(.data, x_col, y_col, group_col, y_title) {
     .data, "column",
     highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]),
     tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
-  ) %>%
-    highcharter::hc_xAxis(title = list(text = NULL)) %>%
-    plt_hc_percentage(y_title) %>%
+  ) |>
+    highcharter::hc_xAxis(title = list(text = NULL)) |>
+    plt_hc_percentage(y_title) |>
     highcharter::hc_exporting(enabled = TRUE)
 
 }
@@ -221,9 +221,9 @@ hc_plot_assessments <- function(.data, x_var, y_var, subject) {
     .data, "column",
     highcharter::hcaes(x = .data[[x_var]], y = .data[[y_var]]),
     tooltip = list(pointFormat = tool_tip)
-  ) %>%
-    plt_hc_percentage(y_var_title) %>%
-    highcharter::hc_xAxis(title = NULL) %>%
+  ) |>
+    plt_hc_percentage(y_var_title) |>
+    highcharter::hc_xAxis(title = NULL) |>
     highcharter::hc_exporting(enabled = TRUE)
 
 }
@@ -234,12 +234,12 @@ hc_plot_assessments <- function(.data, x_var, y_var, subject) {
 plt_hc_percentage <- function(plt, y_var_title) {
 
   # make the y-axis a percentage from 0 to 100%
-  plt %>%
+  plt |>
     highcharter::hc_yAxis(
       title = list(text = y_var_title),
       labels = list(format = '{value}%'),
       min = 0, max = 100
-    ) %>%
+    ) |>
     highcharter::hc_exporting(enabled = TRUE)
 
 }

@@ -12,14 +12,14 @@ table_cities_in_single_district <- function(district_shapefile, state) {
     state = state,
     geometry = TRUE,
     keep_geo_vars = FALSE
-  ) %>%
-    dplyr::filter(variable == 'POP')
+  ) |>
+    dplyr::filter(.data$variable == 'POP')
 
   # centroid of city, if centroid is within district then city is in district
   city_centroid <- sf::st_centroid(state_city_pop_geo$geometry)
 
   # calculate whether centroid of city is within district shapefile
-  city_rows_in_district <- sf::st_contains(district_shapefile$geometry[[1]], city_centroid, sparse = FALSE) %>%
+  city_rows_in_district <- sf::st_contains(district_shapefile$geometry[[1]], city_centroid, sparse = FALSE) |>
     # get the row numbers of cities that have the centroid within the district
     which()
 
@@ -39,12 +39,12 @@ table_cities_in_single_district <- function(district_shapefile, state) {
 census_tracts_in_district <- function(state, district_shapefile) {
 
   # texas block groups
-  state_census_tracts_shapefile <- tigris::tracts(state = state)  %>%
-    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  state_census_tracts_shapefile <- tigris::tracts(state = state)  |>
+    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
     sf::st_transform(4326, quiet = TRUE)
 
-  district_shapefile <- district_shapefile %>%
-    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  district_shapefile <- district_shapefile |>
+    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
     sf::st_transform(4326, quiet = TRUE)
 
   # extract tracts that touch the district
@@ -53,8 +53,8 @@ census_tracts_in_district <- function(state, district_shapefile) {
   tracts_geoid_in_district <- tracts_in_district$GEOID
 
   # only keep tracts within the district for county shappefile
-  state_census_tracts_shapefile <- state_census_tracts_shapefile %>%
-    dplyr::filter(GEOID %in% !!tracts_geoid_in_district)
+  state_census_tracts_shapefile <- state_census_tracts_shapefile |>
+    dplyr::filter(.data$GEOID %in% !!tracts_geoid_in_district)
 
   list(
     tracts_in_district = tracts_geoid_in_district,
@@ -74,8 +74,8 @@ calculate_tracts_in_district <- function(district_shapefile, state_census_tracts
 
   # find which block groups are in the school district
   # get integer number of block group from the state-wide block group shape file
-  block_groups_in_district_int <- sf::st_intersects(state_census_tracts_shapefile, district_grid, sparse = FALSE) %>%
-    {which(rowSums(.) > 0)}
+  block_groups_in_district_int <- sf::st_intersects(state_census_tracts_shapefile, district_grid, sparse = FALSE)
+  block_groups_in_district_int <- which(rowSums(block_groups_in_district_int) > 0)
 
   # extract only the block groups in the district
   state_census_tracts_shapefile[block_groups_in_district_int, ]

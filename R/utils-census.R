@@ -7,7 +7,7 @@ acs_demographic_data <- function(acs_variables, state, tract_fips) {
 
   acs_geographies <- c('state', 'tract')
 
-  purrr::map_df(acs_geographies, function(.x) {
+  purrr::map(acs_geographies, function(.x) {
     df <- tidycensus::get_acs(
       geography = .x,
       variables = acs_variables,
@@ -17,13 +17,14 @@ acs_demographic_data <- function(acs_variables, state, tract_fips) {
     )
 
     if (.x == 'tract') {
-      df <- df %>%
-        dplyr::filter(GEOID %in% !!tract_fips)
+      df <- df |>
+        dplyr::filter(.data$GEOID %in% !!tract_fips)
     }
 
     return(df)
-  }) %>%
-    dplyr::mutate(geography = ifelse(stringr::str_detect(NAME, 'Tract'), 'District Average', 'State Average'))
+  })  |>
+    purrr::list_rbind() |>
+    dplyr::mutate(geography = ifelse(stringr::str_detect(.data$NAME, 'Tract'), 'District Average', 'State Average'))
 }
 
 #' Covert raw counts to percentages
@@ -33,15 +34,15 @@ acs_demographic_data <- function(acs_variables, state, tract_fips) {
 #' @keywords internal
 calculate_percentages <- function(.data, total_variable_string) {
 
-  .data %>%
-    dplyr::group_by(geography, variable) %>%
-    dplyr::summarize(n_demo = sum(estimate), .groups = 'drop_last') %>%
+  .data |>
+    dplyr::group_by_at(c('geography', 'variable')) |>
+    dplyr::summarize(n_demo = sum(.data$estimate), .groups = 'drop_last') |>
     dplyr::mutate(
-      n_total = max(n_demo),
-      perc_demo = (n_demo / n_total) * 100
-    ) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(variable != total_variable_string)
+      n_total = max(.data$n_demo),
+      perc_demo = (.data$n_demo / .data$n_total) * 100
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::filter(.data$variable != !!total_variable_string)
 }
 
 #' Calculate educational attainment
@@ -59,31 +60,31 @@ educational_attainment <- function(state, tract_fips, year) {
   acs_vars <- tidycensus::load_variables(year, "acs5", cache = TRUE)
 
   # get county and state educational attainment numbers
-  education <- acs_demographic_data(education_variables, state, tract_fips)  %>%
+  education <- acs_demographic_data(education_variables, state, tract_fips)  |>
     dplyr::left_join(acs_vars[c('name', 'label')], by = c('variable' = 'name'))
 
   # re-bin educational attainment levels
-  education %>%
+  education |>
     # use variable numbers to bin groups
-    dplyr::mutate(variable_number = stringr::str_extract(variable, "[0-9]{3}$") %>% as.numeric()) %>%
+    dplyr::mutate(variable_number = stringr::str_extract(.data$variable, "[0-9]{3}$") |> as.numeric()) |>
     dplyr::mutate(education_level = dplyr::case_when(
-      variable_number == 1 ~ 'Population 25 and over',
-      dplyr::between(variable_number, 2, 16) ~ 'No HS diploma or GED',
-      dplyr::between(variable_number, 17, 18) ~ 'HS diploma or GED',
-      dplyr::between(variable_number, 19, 21) ~ "Some college or associates degree",
-      dplyr::between(variable_number, 22, 22) ~ "Bachelor's degree",
-      dplyr::between(variable_number, 23, 25) ~ "Beyond bachelor's",
+      .data$variable_number == 1 ~ 'Population 25 and over',
+      dplyr::between(.data$variable_number, 2, 16) ~ 'No HS diploma or GED',
+      dplyr::between(.data$variable_number, 17, 18) ~ 'HS diploma or GED',
+      dplyr::between(.data$variable_number, 19, 21) ~ "Some college or associates degree",
+      dplyr::between(.data$variable_number, 22, 22) ~ "Bachelor's degree",
+      dplyr::between(.data$variable_number, 23, 25) ~ "Beyond bachelor's",
       TRUE ~ 'Failed to match'
-    )) %>%
+    )) |>
     # create ordered factor based on variable number
-    dplyr::group_by(education_level) %>%
-    dplyr::mutate(max_variable_number = max(variable_number)) %>%
-    dplyr::ungroup() %>%
-    dplyr::mutate(education_level = forcats::fct_reorder(education_level, max_variable_number)) %>%
+    dplyr::group_by(.data$education_level) |>
+    dplyr::mutate(max_variable_number = max(.data$variable_number)) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(education_level = forcats::fct_reorder(.data$education_level, .data$max_variable_number)) |>
     # don't need these variables because we have descriptive labels for them
-    dplyr::select(-variable_number, -variable, -label) %>%
+    dplyr::select(-dplyr::all_of(c("variable_number", "variable", "label"))) |>
     #rename tpo match function that calculates percentages
-    dplyr::rename(variable = education_level) %>%
+    dplyr::rename(variable = .data$education_level) |>
     # calculate percentages for each newly created bin
     calculate_percentages('Population 25 and over')
 
@@ -94,12 +95,11 @@ educational_attainment <- function(state, tract_fips, year) {
 #' @keywords internal
 get_state_fips <- function(state_abbreviation) {
 
-  data(fips_codes, package = 'tidycensus')
-
-  fips_codes %>%
-    dplyr::filter(state == state_abbreviation) %>%
-    pull(state_code) %>%
-    unique() %>%
+  # fips_code in internal data saved in sysdata.rda
+  fips_codes |>
+    dplyr::filter(.data$state == !!state_abbreviation) |>
+    dplyr::pull(.data$state_code) |>
+    unique() |>
     as.numeric()
 }
 
@@ -111,17 +111,17 @@ get_state_fips <- function(state_abbreviation) {
 #' @keywords internal
 acs_tracts_race <- function(.data, races_to_use) {
 
-  .data %>%
-    dplyr::filter(stringr::str_detect(NAME, 'Tract')) %>%
-    dplyr::group_by(NAME) %>%
-    dplyr::mutate(total_estimate = max(estimate), total_moe = max(moe)) %>%
-    dplyr::ungroup() %>%
-    dplyr::filter(variable %in% !!races_to_use) %>%
+  .data |>
+    dplyr::filter(stringr::str_detect(.data$NAME, 'Tract')) |>
+    dplyr::group_by(.data$NAME) |>
+    dplyr::mutate(total_estimate = max(.data$estimate), total_moe = max(.data$moe)) |>
+    dplyr::ungroup() |>
+    dplyr::filter(.data$variable %in% !!races_to_use) |>
     dplyr::mutate(
-      perc_estimate = estimate / total_estimate,
-      color_pal = leaflet::colorNumeric("Blues", estimate)(estimate),
-      perc_estimate = scales::percent(perc_estimate, accuracy = 1),
-      perc_moe = tidycensus::moe_prop(estimate, total_estimate, moe, total_moe) * 100,
+      perc_estimate = .data$estimate / .data$total_estimate,
+      color_pal = leaflet::colorNumeric("Blues", .data$estimate)(.data$estimate),
+      perc_estimate = scales::percent(.data$perc_estimate, accuracy = 1),
+      perc_moe = tidycensus::moe_prop(.data$estimate, .data$total_estimate, .data$moe, .data$total_moe) * 100,
       dplyr::across(c('estimate', 'moe', 'perc_moe'), ~round(., 0))
     )
 
@@ -131,21 +131,21 @@ acs_tracts_race <- function(.data, races_to_use) {
 #' Create choropath of census tracts and racial brakdowns
 #'
 #' @keywords internal
-choropath_tracts_race <- function(.data, race) {
+choropath_tracts_race <- function(.data, race, tracts_in_district, district_shapefile, specific_race_population, school_directory) {
 
-  specific_race_population <- .data %>% filter(variable == !!race)
+  specific_race_population <- .data |> dplyr::filter(.data$variable == !!race)
 
   labels <- glue::glue(
     "<strong>{race} Population</strong><br/>
    <strong>{specific_race_population$estimate}</strong> {race} residents (+/- {specific_race_population$moe})<br/>
    <strong>{specific_race_population$perc_estimate}</strong> {race} population (+/- {specific_race_population$perc_moe})"
-  ) %>%
+  ) |>
     lapply(htmltools::HTML)
 
   leaflet_census_tracts(
-    tracts_in_district[["shapefiles_tracts_in_district"]],
+    tracts_in_district,
     specific_race_population,
-    district_shapefile$geometry, school_directory, labels
+    district_shapefile, school_directory, labels
   )
 
 }

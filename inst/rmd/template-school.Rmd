@@ -19,15 +19,15 @@ knitr::opts_chunk$set(
   warning = FALSE
 )
 
-library(glue)
-library(forcats)
-library(stringr)
-library(tigris)
-library(purrr)
-library(dplyr)
-library(highcharter)
-library(schoolreportr)
-library(flexdashboard)
+# library(glue)
+# library(forcats)
+# library(stringr)
+# library(tigris)
+# library(purrr)
+# library(dplyr)
+# library(highcharter)
+# library(schoolreportr)
+# library(flexdashboard)
 
 years <- 2010:2020
 org_level <- 'schools'
@@ -115,7 +115,7 @@ latest_year_enrollment <- school_enrollment %>%
   as.numeric() %>%
   scales::comma()
 
-valueBox(latest_year_enrollment, icon = "fa-child")
+flexdashboard::valueBox(latest_year_enrollment, icon = "fa-child")
 ```
 
 ### FTE Teachers at `r school_names`<br>`r glue("{ccd_year}<br>Grades {grade_span}")`
@@ -125,7 +125,7 @@ teachers_elementary <- sum(school_directory$teachers_fte) %>%
   as.numeric() %>%
   scales::comma()
 
-valueBox(teachers_elementary, icon = "fa-chalkboard-teacher")
+flexdashboard::valueBox(teachers_elementary, icon = "fa-chalkboard-teacher")
 ```
 
 ### Percent of 5-17 year olds in poverty within district<br>`r max(saipe_years)`
@@ -134,7 +134,7 @@ valueBox(teachers_elementary, icon = "fa-chalkboard-teacher")
 percent_students_poverty <-  district_poverty$est_population_5_17_pct[1] %>%
   scales::percent()
 
-valueBox(percent_students_poverty, icon = "fa-bed")
+flexdashboard::valueBox(percent_students_poverty, icon = "fa-bed")
 ```
 
 ### Percent passing math state assessments<br>`r glue("{edfacts_year}<br>Grades {grade_span}")`
@@ -149,7 +149,7 @@ math_assess <- school_assessment_recent_year %>%
 
 math_assess <- scales::percent(math_assess / 100, accuracy = 1)
 
-valueBox(math_assess, icon = "fa-calculator")
+flexdashboard::valueBox(math_assess, icon = "fa-calculator")
 ```
 
 ### Percent passing reading state assessments<br>`r glue("{edfacts_year}<br>Grades {grade_span}")`
@@ -160,7 +160,7 @@ read_assess <- school_assessment_recent_year %>%
 
 read_assess <- scales::percent(read_assess / 100, accuracy = 1)
 
-valueBox(read_assess, icon = "fa-book")
+flexdashboard::valueBox(read_assess, icon = "fa-book")
 ```
 
 Row
@@ -401,7 +401,10 @@ if (!"Total" %in% census_demographics$variable) stop("Population census tract da
 
 all_race_population <- schoolreportr:::acs_tracts_race(census_demographics, races_to_use)
 
-schoolreportr:::choropath_tracts_race(all_race_population, 'Black / African-American')
+schoolreportr:::choropath_tracts_race(
+  all_race_population, 'Black / African-American', tracts_in_district[["shapefiles_tracts_in_district"]], 
+  district_shapefile$geometry, school_directory
+)
 ```
 
 Row {data-height=350}
@@ -410,13 +413,19 @@ Row {data-height=350}
 ### Percentage Hispanic / Latinx by Census Tract
 
 ```{r}
-schoolreportr:::choropath_tracts_race(all_race_population, 'Hispanic / Latinx')
+schoolreportr:::choropath_tracts_race(
+  all_race_population, 'Hispanic / Latinx', tracts_in_district[["shapefiles_tracts_in_district"]], 
+  district_shapefile$geometry, school_directory
+)
 ```
 
 ### Percentage White by Census Tract
 
 ```{r}
-schoolreportr:::choropath_tracts_race(all_race_population, 'White')
+schoolreportr:::choropath_tracts_race(
+  all_race_population, 'White', tracts_in_district[["shapefiles_tracts_in_district"]], 
+  district_shapefile$geometry, school_directory
+)
 ```
 
 Row {data-height=350}

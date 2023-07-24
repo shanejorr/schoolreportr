@@ -1,12 +1,22 @@
 # items to add --------------------------
 
+max_year <- max(schoolreportr::data_years_available('ccd'))
+
+a <- educationdata::get_education_data(
+  level = 'schools',
+  source = "ccd",
+  topic = "directory",
+  filters = list(year = max_year, state_location = 'AR')
+) |>
+  dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'lea_name', 'city_location', 'state_location')))
+
 # median income: census
 # education attainment: census
 
 # Chronic Absenteeism (Consistent attendance): CRCD
 
 # discipline: CRCD
-# days suspended: CRCD
+# days suspended: CRCDß
 
 # dual enrollment: CRCD
 

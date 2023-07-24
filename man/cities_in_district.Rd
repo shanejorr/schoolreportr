@@ -4,7 +4,7 @@
 \alias{cities_in_district}
 \title{Table of cities}
 \usage{
-cities_in_district(district_cities)
+cities_in_district(district_cities, pop_colname)
 }
 \description{
 Clean the table of cities in the district and convert it to a gt table

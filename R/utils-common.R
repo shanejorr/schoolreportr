@@ -8,9 +8,9 @@ rename_race <- function(race_col) {
   race_col <- as.character(race_col)
 
   dplyr::case_when(
-    stringr::str_detect(race_col, ".*[H|h]isp.*") ~ "Hispanic / Latinx",
-    stringr::str_detect(race_col, ".*Black.*|.*African.*") ~ "Black, African-American",
-    TRUE ~ race_col
+    stringr::str_detect(.data$race_col, ".*[H|h]isp.*") ~ "Hispanic / Latinx",
+    stringr::str_detect(.data$race_col, ".*Black.*|.*African.*") ~ "Black, African-American",
+    .default ~ .data$race_col
   )
 
 }
@@ -25,10 +25,10 @@ relevel_race <- function(race_col) {
   # rename race to ensure it matches standard names
   race_col <- rename_race(race_col)
 
-  race_col <- forcats::fct_relevel(race_col, 'Black, African-American')
-  race_col <- forcats::fct_relevel(race_col, 'Hispanic / Latinx', after = 1)
-  race_col <- forcats::fct_relevel(race_col, 'White', after = 2)
-  race_col <- forcats::fct_relevel(race_col, 'Two or more races', after = Inf)
+  race_col <- forcats::fct_relevel(.data$race_col, 'Black, African-American')
+  race_col <- forcats::fct_relevel(.data$race_col, 'Hispanic / Latinx', after = 1)
+  race_col <- forcats::fct_relevel(.data$race_col, 'White', after = 2)
+  race_col <- forcats::fct_relevel(.data$race_col, 'Two or more races', after = Inf)
 
   return(race_col)
 }
@@ -38,10 +38,10 @@ relevel_race <- function(race_col) {
 #' @keywords internal
 state_fips_code <- function(state_abb) {
 
-  tidycensus::fips_codes %>%
-    dplyr::filter(state == !!state_abb) %>%
-    dplyr::distinct(state_code) %>%
-    dplyr::pull(state_code) %>%
+  tidycensus::fips_codes |>
+    dplyr::filter(.data$state == !!state_abb) |>
+    dplyr::distinct(.data$state_code) |>
+    dplyr::pull(.data$state_code) |>
     as.numeric()
 
 }
@@ -51,7 +51,7 @@ state_fips_code <- function(state_abb) {
 #' @keywords internal
 pretty_percent_cols <- function(.data, perc_col) {
 
-  .data %>%
+  .data |>
     dplyr::mutate(
       .perc_plot = .data[[perc_col]] * 100,
       .perc_cleaned = scales::percent(.data[[perc_col]], accuracy = 1)

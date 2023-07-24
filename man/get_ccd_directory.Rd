@@ -10,7 +10,8 @@ get_ccd_directory(org_level, nces_num, year)
 \item{org_level}{The level to return the results. This is the 'level' parameter in the API.
 One of either 'schools' or 'school-district'}
 
-\item{nces_num}{The school's LEAID number or NCES number, as a string.}
+\item{nces_num}{The school's LEAID number or NCES number, as a string. Can use multiple
+schools or districts by combining all numbers in a vector.}
 
 \item{year}{The years from which you want to retrieve data. No data will be returned if data
 is not available for the year.}
