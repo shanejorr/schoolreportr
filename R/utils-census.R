@@ -1,9 +1,17 @@
-#' ACS Census demographic data
+#' Import ACS census data for a state and tracts
 #'
-#' Import demographic data from the ACS. Import multiple tables at once and return in single dataframe.
+#' Imports census tract and state-level demographic data from the ACS.
+#' Then combines the census tract and state-level information into one data set.
+#' This is a helper function for creating the Rmarkdown file and has little application
+#' outside this file.
 #'
-#' @keywords internal
-acs_demographic_data <- function(acs_variables, state, tract_fips) {
+#' @param acs_variables The variable names from teh ACS that we want to pull.
+#' @param state_abb The two letter state abbreviation on the state that
+#'      you want to show all schools for.
+#' @param tract_fips The fips code of teh census tracts that we want to get data for.
+#'
+#' @export
+sr_demographic_data <- function(acs_variables, state_abb, tract_fips) {
 
   acs_geographies <- c('state', 'tract')
 
@@ -12,7 +20,7 @@ acs_demographic_data <- function(acs_variables, state, tract_fips) {
       geography = .x,
       variables = acs_variables,
       survey = 'acs5',
-      state = state,
+      state = state_abb,
       moe_level = 95
     )
 
@@ -27,12 +35,22 @@ acs_demographic_data <- function(acs_variables, state, tract_fips) {
     dplyr::mutate(geography = ifelse(stringr::str_detect(.data$NAME, 'Tract'), 'District Average', 'State Average'))
 }
 
-#' Covert raw counts to percentages
+#' Calculate percentages in district given counts of each tract in a district
 #'
-#' Take a data set of raw count numbers and calcualte percentages for groups.
+#' Calculates overall percentage demographics in a district and state given counts
+#' in all census tracts in a district and overall state counts. For example, calculates
+#' racial breakdown by percentage in the district by creating aggregate
+#' percentage for all census tracts in the district. Input data is created with `sr_demographic_data`.
 #'
-#' @keywords internal
-calculate_percentages <- function(.data, total_variable_string) {
+#' This is a helper function used to create the Rmarkdown report.
+#'
+#' @param .data Data frame containing census demographic data. Data.frame should
+#'      be created with `sr_demographic_data`.
+#'
+#' @export
+sr_calculate_percentages <- function(.data) {
+
+  sr_check_required_cols(.data, c('geography', 'variable', 'estimate'))
 
   .data |>
     dplyr::group_by_at(c('geography', 'variable')) |>
@@ -41,8 +59,7 @@ calculate_percentages <- function(.data, total_variable_string) {
       n_total = max(.data$n_demo),
       perc_demo = (.data$n_demo / .data$n_total) * 100
     ) |>
-    dplyr::ungroup() |>
-    dplyr::filter(.data$variable != !!total_variable_string)
+    dplyr::ungroup()
 }
 
 #' Calculate educational attainment
@@ -60,7 +77,7 @@ educational_attainment <- function(state, tract_fips, year) {
   acs_vars <- tidycensus::load_variables(year, "acs5", cache = TRUE)
 
   # get county and state educational attainment numbers
-  education <- acs_demographic_data(education_variables, state, tract_fips)  |>
+  education <- sr_demographic_data(education_variables, state, tract_fips)  |>
     dplyr::left_join(acs_vars[c('name', 'label')], by = c('variable' = 'name'))
 
   # re-bin educational attainment levels
@@ -86,7 +103,8 @@ educational_attainment <- function(state, tract_fips, year) {
     #rename tpo match function that calculates percentages
     dplyr::rename(variable = .data$education_level) |>
     # calculate percentages for each newly created bin
-    calculate_percentages('Population 25 and over')
+    sr_calculate_percentages() |>
+    dplyr::filter(.data$variable != 'Population 25 and over')
 
 }
 
@@ -105,11 +123,18 @@ get_state_fips <- function(state_abbreviation) {
 
 #' Create data set with racial population and percentage breakdowns by census tracts
 #'
-#' @param .data Data set containing imported census demographic data created with `acs_demographic_data()`
+#' Cleans ACS census data with race variables by putting it into a format where it
+#' can be plotted with a choropleth map in highcharts.
+#'
+#' Helper function that is used to create Rmarkdown file
+#'
+#' @param .data Data set containing imported census demographic data created with `sr_demographic_data`
 #' @param races_to_use Races that we want to include in the data, as a vector of strings.
 #'
-#' @keywords internal
-acs_tracts_race <- function(.data, races_to_use) {
+#' @export
+sr_rmd_census_tracts_race <- function(.data, races_to_use) {
+
+  sr_check_required_cols(.data, c('NAME', 'variable', 'estimate'))
 
   .data |>
     dplyr::filter(stringr::str_detect(.data$NAME, 'Tract')) |>
@@ -124,28 +149,5 @@ acs_tracts_race <- function(.data, races_to_use) {
       perc_moe = tidycensus::moe_prop(.data$estimate, .data$total_estimate, .data$moe, .data$total_moe) * 100,
       dplyr::across(c('estimate', 'moe', 'perc_moe'), ~round(., 0))
     )
-
-}
-
-
-#' Create choropath of census tracts and racial brakdowns
-#'
-#' @keywords internal
-choropath_tracts_race <- function(.data, race, tracts_in_district, district_shapefile, specific_race_population, school_directory) {
-
-  specific_race_population <- .data |> dplyr::filter(.data$variable == !!race)
-
-  labels <- glue::glue(
-    "<strong>{race} Population</strong><br/>
-   <strong>{specific_race_population$estimate}</strong> {race} residents (+/- {specific_race_population$moe})<br/>
-   <strong>{specific_race_population$perc_estimate}</strong> {race} population (+/- {specific_race_population$perc_moe})"
-  ) |>
-    lapply(htmltools::HTML)
-
-  leaflet_census_tracts(
-    tracts_in_district,
-    specific_race_population,
-    district_shapefile, school_directory, labels
-  )
 
 }

@@ -1,4 +1,43 @@
+year <- 2021
+
+a <- educationdata::get_education_data(
+  level = "school-districts",
+  source = "saipe",
+  filters = list(year = 2019:2020)
+)
+
+
+library(rvest)
+
+url <- 'https://urbaninstitute.github.io/education-data-package-r/'
+
+# Read the HTML code from the website
+webpage <- read_html(url)
+
+# Using CSS selectors to scrap the table
+# 'table.table' is the CSS selector for the table with class 'table'
+table_data_html <- html_nodes(webpage,'table.table')
+
+# Converting the HTML table to data frame
+table_data <- html_table(table_data_html[[1]], fill = TRUE) |>
+  dplyr::filter(
+    .data$Level %in% c('schools', 'school-districts'),
+    .dataTopic == 'directory'
+  ) |>
+  dplyr::distinct(Level, Source, `Years Available`)
+
 # items to add --------------------------
+
+library(educationdata)
+
+df <- get_education_data(level = 'schools',
+                         source = 'ccd',
+                         topic = 'enrollment',
+                         subtopic = list('race'),
+                         filters = list(year = c(2010, 2011,2030),
+                                        grade = 9,
+                                        ncessch = '340606000122'),
+                         add_labels = TRUE)
 
 max_year <- max(schoolreportr::data_years_available('ccd'))
 

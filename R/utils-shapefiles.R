@@ -1,15 +1,31 @@
 #' Identify cities in the district
 #'
-#' Get the cities in a school district and return a dataframe with the cities and their population.
+#' Get the cities in a school district and return a dataframe with the cities and their populations.
+#'
+#' @param district_shapefile The shapefile of the district. Can use `tigris::school_districts()`
+#'      to get the shapefile.
+#' @param state_abb The two letter state abbbreviation on the state that
+#'      you want to show all schools for.
+#'
+#' @examples
+#' \dontrun{
+#' district_shapefile <- tigris::school_districts(state = "AR", cb = FALSE) |>
+#'    dplyr::filter(GEOID == "0503060")
+#'
+#' sr_table_cities_in_district(district_shapefile, "AR")
+#' }
+#'
+#' @returns A data frame with all the cities within a district's boundaries
+#'      and each city's population.
 #'
 #' @export
-table_cities_in_single_district <- function(district_shapefile, state) {
+sr_cities_in_district <- function(district_shapefile, state_abb) {
 
   # populations for all cities in the state
   state_city_pop_geo <- tidycensus::get_estimates(
     geography = 'place',
     product = 'population',
-    state = state,
+    state = state_abb,
     geometry = TRUE,
     keep_geo_vars = FALSE
   ) |>
@@ -26,46 +42,70 @@ table_cities_in_single_district <- function(district_shapefile, state) {
   # drop the geometry to make printing the table easier
   cities_in_district <- sf::st_drop_geometry(state_city_pop_geo)[city_rows_in_district, c("NAME", "value")]
 
+  # clean up the table
+  cities_in_district <- cities_in_district |>
+    dplyr::arrange(dplyr::desc(.data$value)) |>
+    dplyr::mutate(NAME = stringr::str_remove(.data$NAME, " city, .*")) |>
+    dplyr::rename(city = .data$NAME, population = .data$value)
+
   return(cities_in_district)
 
 }
 
-#' Census tracts in district
+#' Identify census tracts in a school district
 #'
 #' Find the census tracts in the district and return a list containing the following elements:
 #'   (1) vector of tract IDs that are in the district, (2) shapefile of tracts in the district.
 #'
+#' @param district_shapefile The shapefile of the district. Can use `tigris::school_districts()`
+#'      to get the shapefile.
+#' @param state_abb The two letter state abbbreviation of the state in which
+#'      the district is located.
+#'
+#' @examples
+#' \dontrun{
+#' state_abb <- 'AR'
+#'
+#' district_shapefile <- tigris::school_districts(state = state_abb, cb = FALSE) |>
+#'    dplyr::filter(GEOID == "0503060")
+#'
+#' sr_census_tracts_in_district(district_shapefile, state_abb)
+#' }
+#'
 #' @export
-census_tracts_in_district <- function(state, district_shapefile) {
+sr_census_tracts_in_district <- function(district_shapefile, state_abb) {
 
-  # texas block groups
-  state_census_tracts_shapefile <- tigris::tracts(state = state)  |>
+  # download shapefiles for all state census tracts
+  state_census_tracts_shapefile <- tigris::tracts(state = state_abb)  |>
     sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
     sf::st_transform(4326, quiet = TRUE)
 
+  # clean up district shapefile so that it matches with state census tract shape files
   district_shapefile <- district_shapefile |>
     sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
     sf::st_transform(4326, quiet = TRUE)
 
   # extract tracts that touch the district
-  tracts_in_district <- calculate_tracts_in_district(district_shapefile, state_census_tracts_shapefile)
+  tracts_in_district <- sr_calculate_tracts_in_district(district_shapefile, state_census_tracts_shapefile)
 
   tracts_geoid_in_district <- tracts_in_district$GEOID
 
-  # only keep tracts within the district for county shappefile
+  # only keep census tracts within the district
   state_census_tracts_shapefile <- state_census_tracts_shapefile |>
     dplyr::filter(.data$GEOID %in% !!tracts_geoid_in_district)
 
-  list(
-    tracts_in_district = tracts_geoid_in_district,
-    shapefiles_tracts_in_district = state_census_tracts_shapefile
-  )
+  return(state_census_tracts_shapefile)
+
+  # list(
+  #   tracts_in_district = tracts_geoid_in_district,
+  #   shapefiles_tracts_in_district = state_census_tracts_shapefile
+  # )
 }
 
 #' Helper function that finds tracts in district
 #'
-#' @export
-calculate_tracts_in_district <- function(district_shapefile, state_census_tracts_shapefile) {
+#' @keywords internal
+sr_calculate_tracts_in_district <- function(district_shapefile, state_census_tracts_shapefile) {
 
   # sample points from the district shapefile
   # we will use the points to find out which block_groups are in the district

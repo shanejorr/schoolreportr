@@ -22,7 +22,6 @@ Imports:
     sf,
     scales,
     leaflet,
-    gt,
     highcharter,
     purrr,
     glue,

@@ -5,14 +5,40 @@ fips_states <- function() {
   c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
 }
 
+#' Helper function to add leading zeroes to school and district numbers
+#'
+#' School and district numbers started receiveing an additional leading zero
+#' in 2020. This function places all numbers in the same format by ensuring all
+#' numbers are of the same length. Leading zeroes are added when numbers are not of the proper length
+#'
+#' @param .data Data frame containing columns titled `ncessch` and `leaid`
+#'      that we want to convert to character
+#'
+#' @keywords internal
+sr_add_leading_zeroes <- function(.data) {
+
+  district_length <- 7
+  school_length <- 12
+
+  .data |>
+    dplyr::mutate(
+      dplyr::across(dplyr::any_of('ncessch'), ~stringr::str_pad(.x, school_length, "0")),
+      dplyr::across(dplyr::any_of('leaid'), ~stringr::str_pad(.x, district_length, "0"))
+    )
+
+}
+
 #' Years data is available for each Urban Inst. API data source
+#'
+#' Find the years each data source is available for data from the Urban Institute's
+#' Education data explorer API.
 #'
 #' @param data_source The data source for the API. One of 'ccd', 'crdc', 'edfacts', or 'saipe
 #'
 #' @return Vector with the years (as integers) in which the data source is available.
 #'
 #' @export
-data_years_available <- function(data_source) {
+sr_years_data_available <- function(data_source) {
 
   sources <- c('ccd', 'crdc', 'edfacts', 'saipe')
 
@@ -24,7 +50,7 @@ data_years_available <- function(data_source) {
     ccd = 1986:2021,
     crdc = c(2011, 2013, 2015, 2017),
     edfacts = c(2009:2018, 2020),
-    saipe= 1999:2018
+    saipe= 1999:2021
   )
 
   years_available[[data_source]]
@@ -37,7 +63,7 @@ data_years_available <- function(data_source) {
 #' This function checks to ensure that the level parameter is one of these two values and throws an error if not.
 #'
 #' @keywords internal
-check_level <- function(level) {
+sr_check_level <- function(level) {
 
   levels <- c('schools', 'school-districts')
 
@@ -51,15 +77,17 @@ check_level <- function(level) {
 #' fall semester. Function also orders the school year column by the year column, so plots with the
 #' school year column on the x axis are in the proper order
 #'
+#' @param years_col Vector containing years. This will typically be the column in the
+#'      data set containing years.
 #'
-#' @returns A vector of school years.
+#' @returns A vector of school years, as a factor.
 #'
 #' @keywords internal
-convert_to_sy <- function(years_col) {
+sr_convert_to_sy <- function(years_col) {
 
-  school_years_col <- glue::glue("{.data$years_col}-{.data$years_col+1}")
+  school_years_col <- glue::glue("{years_col}-{years_col+1}")
 
-  return(forcats::fct_reorder(.data$school_years_col, .data$years_col))
+  return(forcats::fct_reorder(school_years_col, years_col))
 
 }
 
@@ -69,30 +97,35 @@ convert_to_sy <- function(years_col) {
 #' district, and address. This information is useful to find a school's nces number for
 #' use in `school_report()`.
 #'
-#' @param state_abbreviation The two letter state abbbreviation on the state that
+#' @param state_abb The two letter state abbbreviation on the state that
 #'      you want to show all schools for.
 #'
 #' @returns A data frame showing all schools in a state, along with key identifying information.
 #'
 #' @export
-school_nces_numbers <- function(state_abbreviation) {
+sr_school_nces_numbers <- function(state_abb) {
 
-  max_year <- max(schoolreportr::data_years_available('ccd'))
+  max_year <- max(schoolreportr::sr_years_data_available('ccd'))
 
-  state_abbreviation <- stringr::str_to_upper(state_abbreviation)
+  state_abb <- stringr::str_to_upper(state_abb)
 
   educationdata::get_education_data(
     level = 'schools',
     source = "ccd",
     topic = "directory",
-    filters = list(year = max_year, state_location = state_abbreviation)
+    filters = list(year = max_year, state_location = state_abb)
   ) |>
     dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'lea_name', 'city_location', 'state_location'))) |>
     dplyr::mutate(dplyr::across(c(dplyr::ends_with('name'), 'city_location'), ~stringr::str_to_title(.x)))
 
 }
 
-#' Get directory (staff, address, etc.)
+#' Get CCD directory of a school or district.
+#'
+#' Returns the directory of a school or district for a single year, from the Common
+#' Core of Data data set. In the Education Data API, this returns the "directory" topic from the "ccd" source.
+#' Can return the information from multiple schools or districts by supplying a vector
+#' of numbers to `nces_num`.
 #'
 #' @param org_level The level to return the results. This is the 'level' parameter in the API.
 #'      One of either 'schools' or 'school-district'
@@ -104,9 +137,9 @@ school_nces_numbers <- function(state_abbreviation) {
 #' @returns A data set with the district directory.
 #'
 #' @export
-get_ccd_directory <- function(org_level, nces_num, year) {
+sr_ccd_directory <- function(org_level, nces_num, year) {
 
-  check_level(org_level)
+  sr_check_level(org_level)
 
   purrr::map(nces_num, function(x) {
 
@@ -129,21 +162,24 @@ get_ccd_directory <- function(org_level, nces_num, year) {
 
 }
 
-#' Get enrollment (staff, address, etc.)
+#' Get enrollment data of the school or district.
+#'
+#' Gets enrollment data of the school or district, by race. Data comes from the CCD
+#' and is imported via the Education Data Portal API.
 #'
 #' @param org_level The level to return the results. This is the 'level' parameter in the API.
 #'      One of either 'schools' or 'school-district'
-#' @param nces_num The school's LEAID number or NCES number, as a string.
+#' @param nces_num The district's LEAID number or school's NCES number, as a string.
 #' @param years The years from which you want to retrieve data. No data will be returned if data
 #'      is not available for the year.
-#' @param grades The grades to import with API. Enrollment numbers will combine all grades into one number.
+#' @param grades The grades to import. Enrollment numbers will combine all grades into one number.
 #'
-#' @returns A data set with the enrollment data.
+#' @returns A data frame with the enrollment data.
 #'
 #' @export
-get_ccd_enrollment <- function(org_level, nces_num, years, grades) {
+sr_ccd_enrollment <- function(org_level, nces_num, years, grades) {
 
-  check_level(org_level)
+  sr_check_level(org_level)
 
   enrollment <- purrr::map(nces_num, function(x) {
 
@@ -168,7 +204,7 @@ get_ccd_enrollment <- function(org_level, nces_num, years, grades) {
     dplyr::group_by_at(c('year', 'race'))  |>
     dplyr::summarize(enrollment = sum(.data$enrollment, na.rm = TRUE), .groups = 'drop')
 
-  enrollment$school_year_both <- convert_to_sy(enrollment$year)
+  enrollment$school_year_both <- sr_convert_to_sy(enrollment$year)
 
   enrollment |>
     dplyr::arrange(.data$school_year_both, .data$race)
@@ -177,16 +213,17 @@ get_ccd_enrollment <- function(org_level, nces_num, years, grades) {
 
 #' Percentage of 5-17 year olds in poverty in district
 #'
-#' @param leaid The school's LEAID number, as a string.
+#' @param leaid The district's LEAID number, as a string.
 #' @param year The years from which you want to retrieve data. No data will be returned if data
-#'      is not available for the year.
+#'      is not available for the year. Use a vector of years to return data from
+#'      multiple years.
 #'
-#' @returns A data set with the percentage of 5-17 year old sin poverty by year.
+#' @returns A data set with the percentage of 5-17 year olds in poverty by year.
 #'
 #' @export
-get_district_in_poverty <- function(leaid, year) {
+sr_district_in_poverty <- function(leaid, years) {
 
-  saipe_years <- intersect(data_years_available('saipe'), year)
+  saipe_years <- intersect(sr_years_data_available('saipe'), years)
 
   educationdata::get_education_data(
     level = "school-districts",
@@ -212,7 +249,7 @@ get_schools_in_district <- function(leaid, year, grades = 99) {
 
   recode_grades <- c('-1' = 'Pre-K', '0' = 'K')
 
-  ccd_years <- intersect(data_years_available('ccd'), year)
+  ccd_years <- intersect(sr_years_data_available('ccd'), year)
 
   educationdata::get_education_data(
     level = "schools",
@@ -256,9 +293,9 @@ identify_school_grades <- function(.data, vector_of_grades) {
 
 }
 
-#' Get state assessment data for a district
+#' Get state assessment data for a district or school from EdFacts
 #'
-#' Imports district data from Ed Facts using the Urban Institute's API. The data contains state assessment information.
+#' Imports state assessment data from Ed Facts using the Urban Institute's API.
 #'
 #' @param org_level The level to return the results. This is the 'level' parameter in the API.
 #'      One of either 'schools' or 'school-district'
@@ -271,33 +308,38 @@ identify_school_grades <- function(.data, vector_of_grades) {
 #'      which identifies the data contained in the list element.
 #'
 #' @export
-get_edfacts_state_assessments <- function(org_level, fips_code, years, grade = 99) {
+sr_state_assessments <- function(org_level, fips_code, years, grade = 99) {
+
+  # TODO: allow one to filter by school / district
 
   # get each individual race and all races (99)
   race_to_use <- c(seq(1, 9), 99)
 
-  edfacts <- intersect(data_years_available('edfacts'), years)
+  edfacts <- intersect(sr_years_data_available('edfacts'), years)
 
-  educationdata::get_education_data(level = org_level,
-                     source = "edfacts",
-                     topic = "assessments",
-                     filters = list(
-                       fips = fips_code,
-                       year = edfacts,
-                       grade_edfacts = grade
-                      ),
-                     subtopic = list("race"),
-                     add_labels = TRUE
-                    ) |>
-    clean_numeric_assessments()
+  educationdata::get_education_data(
+    level = org_level,
+    source = "edfacts",
+    topic = "assessments",
+    filters = list(
+      fips = fips_code,
+      year = edfacts,
+      grade_edfacts = grade
+    ),
+    subtopic = list("race"),
+    add_labels = TRUE
+  ) |>
+    sr_clean_numeric_assessments()
 
 }
 
 
 #' Clean up numeric values of state assessments and calculate number who passed
 #'
-#' @export
-clean_numeric_assessments <- function(.data) {
+#' @param .data The state assessment data to clean.
+#'
+#' @keywords internal
+sr_clean_numeric_assessments <- function(.data) {
 
   .data |>
     # clean up numeric columns
@@ -331,30 +373,37 @@ aggregate_assessment <- function(.data, grouping_vars) {
 
 }
 
-#' Create table with state-level assessment scores for the whole state and a single district
+#' Create a table with state-level assessment scores for the whole state and a single district
 #'
-#' @param state_abb Two letter state abbreviation.
-#' @param district_leaid The district's LEAID number, as an integer.
-#' @param years The years from which you want to retrieve data. No data will be returned if data
-#'      is not available for the year.
-#' @param grade Grades to import. Defaults to all grades (99)
+#' Returns a single data set with school / district and state assessment scores, which allows
+#' for comparisons between the school / district and state.
+#'
+#' @param state_assessment_data State assessment data set.
+#' @param org_level The level to return the results. This is the 'level' parameter in the API.
+#'      One of either 'schools' or 'school-district'
+#' @param nces_num The district's LEAID number or school's NCES number, as a string.
 #'
 #' @returns A single data set that contains assessment scores broken down by race. It includes rows
 #'      for the whole state and a single district that is specified.
 #'
 #' @export
-assessment_scores_by_race <- function(state_assessment_data, org_level, nces_num) {
+sr_assessment_scores_by_race <- function(state_assessment_data, org_level, nces_num) {
 
-  check_level(org_level)
+  sr_check_level(org_level)
 
   # we will use a different column to identify the school or district
   # identify filtering column
   filter_col <- if (org_level == 'schools') 'ncessch' else 'leaid'
   geography_id <- if (org_level == 'schools') 'school_name' else 'lea_name'
 
+  # when filtering the dataset, there can be problems with leading zeros.
+  # therefore, remove leading zeros from the nces number and from the numbers in teh data set
+  nces_num_remove_leading_zeros <- stringr::str_remove(nces_num, "^0+")
+
   # calculate district scores
   district <- state_assessment_data |>
-    dplyr::filter(.data[[filter_col]] %in% !!nces_num) |>
+    dplyr::mutate(dplyr::across(dplyr::any_of(c('ncessch', 'leaid')), ~stringr::str_remove(.x, "^0+"))) |>
+    dplyr::filter(.data[[filter_col]] %in% !!nces_num_remove_leading_zeros) |>
     aggregate_assessment(c('year', 'race')) |>
     dplyr::mutate(geography = 'schools / districts')
 
@@ -366,31 +415,33 @@ assessment_scores_by_race <- function(state_assessment_data, org_level, nces_num
   district |>
     dplyr::bind_rows(state_average_assessment) |>
     # rename racial categories and relevel
-    dplyr::mutate(race = rename_reorder_race_education(.data$race)) |>
-    dplyr::mutate(school_year_both = convert_to_sy(.data$year)) |>
+    dplyr::mutate(race = sr_rename_reorder_race_education(.data$race)) |>
+    dplyr::mutate(school_year_both = sr_convert_to_sy(.data$year)) |>
     dplyr::arrange(.data$school_year_both, .data$race)
 
 }
 
 #' Clean enrollment by race data
 #'
-#' Calculate percentage race breakdowns, change race names, reorder race
+#' Calculate percentage breakdowns by race and clean racial category names.
 #'
-#' @param race_enrollment Data frame with enrollment data by race (school or district), created with get_ccd_enrollment()
+#' @param .data Data frame with enrollment data by race (school or district), created with `get_ccd_enrollment()`.
 #'
 #' @returns A data frame with percentage race breakdowns by year.
 #'
 #' @export
-clean_enrollment_by_race <- function(race_enrollment) {
+sr_clean_enrollment_by_race <- function(.data) {
 
-  race_enrollment |>
+  sr_check_required_cols(.data, c('year', 'enrollment', 'race'))
+
+  .data |>
     dplyr::group_by(.data$year) |>
     dplyr::mutate(
       total_students = max(.data$enrollment),
       percent_race = .data$enrollment / .data$total_students,
       percent_race_clean = scales::percent(.data$percent_race, accuracy = 1),
       percent_race = .data$percent_race * 100,
-      race = rename_reorder_race_education(.data$race)
+      race = sr_rename_reorder_race_education(.data$race)
     ) |>
     dplyr::filter(.data$race != 'Total') |>
     dplyr::ungroup()
@@ -405,8 +456,8 @@ clean_enrollment_by_race <- function(race_enrollment) {
 #'
 #' @returns A factor vector with race names changes and order changes.
 #'
-#' @export
-rename_reorder_race_education <- function(race_col) {
+#' @keywords internal
+sr_rename_reorder_race_education <- function(race_col) {
 
   race_order_education <- c('Black' = 'Black / African-American', 'Hispanic' = 'Hispanic / Latinx', 'White' = 'White')
 
@@ -431,7 +482,7 @@ get_state_school_numbers <- function(org_level, state_abb, year) {
     level = org_level,
     source = "ccd",
     topic = "directory",
-    filters = list(fips = state_fips_code(state_abb), year = year)
+    filters = list(fips = sr_state_fips_code(state_abb), year = year)
   )
 
   if (org_level == 'school-districts') {
@@ -439,7 +490,7 @@ get_state_school_numbers <- function(org_level, state_abb, year) {
         dplyr::select(dplyr::all_of('leaid', 'lea_name', 'city_location', 'number_of_schools', 'enrollment'))
   } else if (org_level == 'schools') {
     org_details <- org_details |>
-      dplyr::select(dplyr::all_of(c('ncessch', 'leaid, school_name', 'city_location', 'lowest_grade_offered', 'highest_grade_offered', 'enrollment')))
+      dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'city_location', 'lowest_grade_offered', 'highest_grade_offered', 'enrollment')))
   } else {
     stop()
   }
