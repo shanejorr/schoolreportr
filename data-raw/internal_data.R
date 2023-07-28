@@ -3,6 +3,10 @@ library(tidyverse)
 
 devtools::load_all()
 
+fips_states <- function() {
+  c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
+}
+
 # overall state average for state assessments by race
 # get each individual race and all races (99)
 race_to_use <- c(seq(1, 9), 99)

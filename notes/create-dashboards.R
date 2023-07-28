@@ -1,10 +1,9 @@
 # create dashboards
-library(tidyverse)
 library(schoolreportr)
 
 output_dir <- here::here('notes', 'school-dashboards')
 
-years <- 2010:2020
+years <- 2015:2020
 org_level <- 'schools'
 
 # Bentonville -----------------------------
@@ -15,7 +14,9 @@ grades <- 11
 
 output_filename <- here::here(output_dir, 'Bentonville.html')
 
-knit_dashboard(output_filename, org_level, nces_num, years, state_abb, grades)
+sr_school_report(output_filename, nces_num, years, state_abb, grades)
+
+
 
 # Fresno ---------------------
 nces_num <- c(heaton = '061455001735', williams = '061455011895') # Heaton and Williams

@@ -1,10 +1,3 @@
-#' Vector of state FIPS codes
-#'
-#' @export
-fips_states <- function() {
-  c(2, 4:6, 8:13, 15:42, 44:51, 53:56)
-}
-
 #' Helper function to add leading zeroes to school and district numbers
 #'
 #' School and district numbers started receiveing an additional leading zero
@@ -40,7 +33,7 @@ sr_add_leading_zeroes <- function(.data) {
 #' @export
 sr_years_data_available <- function(data_source) {
 
-  sources <- c('ccd', 'crdc', 'edfacts', 'saipe')
+  sources <- c('ccd', 'crdc', 'edfacts', 'saipe', 'census')
 
   sources_string <- paste0(sources, collapse = "', '")
 
@@ -50,7 +43,8 @@ sr_years_data_available <- function(data_source) {
     ccd = 1986:2021,
     crdc = c(2011, 2013, 2015, 2017),
     edfacts = c(2009:2018, 2020),
-    saipe= 1999:2021
+    saipe= 1999:2021,
+    census = c(2000:2019, 2021) # no 2020 1 year due to COVID
   )
 
   years_available[[data_source]]
@@ -95,7 +89,7 @@ sr_convert_to_sy <- function(years_col) {
 #'
 #' Returns a data frame of all schools in a state, along with their nces number, leaid,
 #' district, and address. This information is useful to find a school's nces number for
-#' use in `school_report()`.
+#' use in [`sr_school_report()`].
 #'
 #' @param state_abb The two letter state abbbreviation on the state that
 #'      you want to show all schools for.
@@ -109,13 +103,13 @@ sr_school_nces_numbers <- function(state_abb) {
 
   state_abb <- stringr::str_to_upper(state_abb)
 
-  educationdata::get_education_data(
+  a <- educationdata::get_education_data(
     level = 'schools',
     source = "ccd",
     topic = "directory",
     filters = list(year = max_year, state_location = state_abb)
-  ) |>
-    dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'lea_name', 'city_location', 'state_location'))) |>
+  )  |>
+    dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'lea_name', 'city_location', 'state_location')), dplyr::ends_with('_offered')) |>
     dplyr::mutate(dplyr::across(c(dplyr::ends_with('name'), 'city_location'), ~stringr::str_to_title(.x)))
 
 }
@@ -214,7 +208,7 @@ sr_ccd_enrollment <- function(org_level, nces_num, years, grades) {
 #' Percentage of 5-17 year olds in poverty in district
 #'
 #' @param leaid The district's LEAID number, as a string.
-#' @param year The years from which you want to retrieve data. No data will be returned if data
+#' @param years The years from which you want to retrieve data. No data will be returned if data
 #'      is not available for the year. Use a vector of years to return data from
 #'      multiple years.
 #'
@@ -233,48 +227,18 @@ sr_district_in_poverty <- function(leaid, years) {
 
 }
 
-#' School directory for schools in district and grade
-#'
-#' @param leaid The school's LEAID number, as a string.
-#' @param year The years from which you want to retrieve data. No data will be returned if data
-#'      is not available for the year.
-#' @param grades Grades to import. Defaults to all grades (99)
-#'
-#' @returns A data set with directory information for all schools in the district and within grades.
-#'
-#' @export
-get_schools_in_district <- function(leaid, year, grades = 99) {
-
-  all_grades <- seq(min(grades), max(grades), 1)
-
-  recode_grades <- c('-1' = 'Pre-K', '0' = 'K')
-
-  ccd_years <- intersect(sr_years_data_available('ccd'), year)
-
-  educationdata::get_education_data(
-    level = "schools",
-    source = "ccd",
-    topic = "directory",
-    filters = list(leaid = leaid, year = ccd_years, school_status = c(1,3,4,5))
-  ) |>
-    # make TRUE if school is in grade range, FALSE otherwise
-    identify_school_grades(all_grades) |>
-    dplyr::mutate(
-      dplyr::across(dplyr::contains('grade_offered'), ~as.character(.x)),
-      dplyr::across(dplyr::contains('grade_offered'), ~dplyr::recode(.x, !!!recode_grades, .default = .x))
-    ) |>
-    dplyr::mutate(grade_range = glue::glue("{.data$lowest_grade_offered} to {.data$highest_grade_offered}"))
-
-}
-
 #' Identify if school contains a grade
 #'
 #' NCES data reports grades for schools, but reports it as the lowest and highest grades.
 #' This function takes a vector of grades as input and then returns a boolean of whether the school
 #' contains any of the grades based on the lowest and highest grades.
 #'
+#' @param .data Dataset of CCD data, created with [`sr_ccd_directory()`].
+#' @param vector_of_grades Vector of integers representing the grades of which
+#'       we want to see if the school has any of the grades in the vector.
+#'
 #' @export
-identify_school_grades <- function(.data, vector_of_grades) {
+sr_identify_school_grades <- function(.data, vector_of_grades) {
 
   min_grade <- min(vector_of_grades)
   max_grade <- max(vector_of_grades)
@@ -288,8 +252,9 @@ identify_school_grades <- function(.data, vector_of_grades) {
       dplyr::between(.data$highest_grade_offered, min_grade, max_grade) ~ TRUE,
       (.data$lowest_grade_offered <= min_grade) & (.data$highest_grade_offered >= min_grade) ~ TRUE,
       (.data$lowest_grade_offered <= max_grade) & (.data$highest_grade_offered >= max_grade) ~ TRUE,
-      TRUE ~ FALSE
-    ))
+      .default = FALSE
+    )) |>
+    dplyr::pull(.data$in_grade)
 
 }
 
@@ -360,8 +325,8 @@ sr_clean_numeric_assessments <- function(.data) {
 #' Summarize aggregate percentages of state assessment data by using the total number of takers
 #' and total numebr of passers
 #'
-#' @export
-aggregate_assessment <- function(.data, grouping_vars) {
+#' @keywords internal
+sr_aggregate_assessment <- function(.data, grouping_vars) {
 
   .data |>
     dplyr::group_by_at(grouping_vars) |>
@@ -404,12 +369,12 @@ sr_assessment_scores_by_race <- function(state_assessment_data, org_level, nces_
   district <- state_assessment_data |>
     dplyr::mutate(dplyr::across(dplyr::any_of(c('ncessch', 'leaid')), ~stringr::str_remove(.x, "^0+"))) |>
     dplyr::filter(.data[[filter_col]] %in% !!nces_num_remove_leading_zeros) |>
-    aggregate_assessment(c('year', 'race')) |>
+    sr_aggregate_assessment(c('year', 'race')) |>
     dplyr::mutate(geography = 'schools / districts')
 
   # calcualte state scores
   state_average_assessment <- state_assessment_data |>
-    aggregate_assessment(c('year', 'race')) |>
+    sr_aggregate_assessment(c('year', 'race')) |>
     dplyr::mutate(geography = 'state total')
 
   district |>
@@ -468,33 +433,5 @@ sr_rename_reorder_race_education <- function(race_col) {
   race <- forcats::fct_relevel(race, 'Two or more races', after = Inf)
 
   return(race)
-
-}
-
-#' Create dataset with all district / school names and their LEAID / NCES numbers
-#'
-#' Used so we can locate leaid numbers from district names
-#'
-#' @export
-get_state_school_numbers <- function(org_level, state_abb, year) {
-
-  org_details <- educationdata::get_education_data(
-    level = org_level,
-    source = "ccd",
-    topic = "directory",
-    filters = list(fips = sr_state_fips_code(state_abb), year = year)
-  )
-
-  if (org_level == 'school-districts') {
-    org_details <- org_details |>
-        dplyr::select(dplyr::all_of('leaid', 'lea_name', 'city_location', 'number_of_schools', 'enrollment'))
-  } else if (org_level == 'schools') {
-    org_details <- org_details |>
-      dplyr::select(dplyr::all_of(c('ncessch', 'leaid', 'school_name', 'city_location', 'lowest_grade_offered', 'highest_grade_offered', 'enrollment')))
-  } else {
-    stop()
-  }
-
-  return(org_details)
 
 }

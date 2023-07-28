@@ -1,6 +1,6 @@
 Package: schoolreportr
 Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: 
     person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
@@ -27,8 +27,10 @@ Imports:
     glue,
     htmltools,
     rmarkdown,
-    here
+    here,
+    fs,
+    cli
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues
 Depends: 
-    R (>= 2.10)
+    R (>= 4.1.0)

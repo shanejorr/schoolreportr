@@ -300,26 +300,6 @@ sr_plot_grouped_bar <- function(.data, x_col, y_col, group_col, plt_title = NULL
 
 }
 
-#' Plot state assessments
-#'
-#' @export
-hc_plot_assessments <- function(.data, x_var, y_var, subject) {
-
-  tool_tip <- paste0("<b>", subject, " % Proficient:</b> {point.y:,.0f}%")
-
-  y_var_title <- paste0("Percentage Passing State ", subject, " Assessments")
-
-  highcharter::hchart(
-    .data, "column",
-    highcharter::hcaes(x = .data[[x_var]], y = .data[[y_var]]),
-    tooltip = list(pointFormat = tool_tip)
-  ) |>
-    sr_plot_percentage(y_var_title) |>
-    highcharter::hc_xAxis(title = NULL) |>
-    highcharter::hc_exporting(enabled = TRUE)
-
-}
-
 #' Create percentages on axis labels
 #'
 #' @keywords internal

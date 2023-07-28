@@ -1,15 +1,18 @@
 ---
+title: "School Landscape Analysis"
+editor_options:
+  chunk_output_type: console
 output: 
   flexdashboard::flex_dashboard:
-    vertical_layout: scroll
     
+    vertical_layout: scroll
 params:
+  
   nces_num: '1'
   years: 2000:2020
   state_abb: 'NC'
   grades: 6:12
   org_level: 'schools'
-  
 ---
 
 ```{r setup, include=FALSE, results = 'hide'}
@@ -21,15 +24,14 @@ knitr::opts_chunk$set(
 
 library(glue)
 library(dplyr)
-# library(schoolreportr)
 
-years <- 2017:2020
-org_level <- 'schools'
-nces_num <- "050306000073"
-state_abb <- 'AR'
-grades <- 10:12
-
-devtools::load_all()
+# years <- 2017:2020
+# org_level <- 'schools'
+# nces_num <- "050306000073"
+# state_abb <- 'AR'
+# grades <- 10:12
+# 
+# devtools::load_all()
 ```
 
 ```{r loadData, results = 'hide', include = FALSE, cache = FALSE}
@@ -105,7 +107,20 @@ ccd_year <- glue("{max_ccd_year}-{max_ccd_year}")
 
 lowest_grade <- min(grades)
 highest_grade <- max(grades)
-grade_span <- glue("{lowest_grade}-{highest_grade}")
+
+prettify_grade <- function(grade) {
+  
+  grade <- as.character(grade)
+  
+  case_when(
+    grade == '-1' ~'Pre-K',
+    grade == '0' ~ 'K',
+    .default = grade
+  )
+  
+}
+
+grade_span <- glue("{prettify_grade(lowest_grade)}-{prettify_grade(highest_grade)}")
 ```
 
 <!-- The Java Script below adds the title to the report -->
@@ -236,6 +251,7 @@ Row {data-height=400}
 ### Total Enrollment by Year
 
 ```{r plotTotalEnrollment}
+
 # plot enrollment -------------------
 
 total_enrollment <- school_enrollment |>
@@ -270,6 +286,7 @@ Row {data-height=400}
 -----------------------------------------------------------------------
 
 ```{r plotAssessmentClean}
+
 # state assessments ----------------
 
 state_assessment <- state_assessment |>
@@ -378,10 +395,20 @@ all_years_race_total[[1]]
 Community Demographics {data-orientation=rows}
 =====================================  
 
+```{r message = TRUE, echo = FALSE, results = 'hide'}
+# get most recent year of census data
+census_most_recent <- max(sr_years_data_available('census'))
+```
+
+***Note:***
+
+*Community data is from the US Census's American Community Survey. The data is from the most recent year available, which is `r census_most_recent`. The data is an aggregate of all census tracts where any portion of the tract is located within the school district.*
+
 Row {data-height=350}
 -------------------------------------
 
 ```{r tractsInDistrict, results = 'hide', cache = FALSE}
+
 # Community demographics ------------------
 
 # find the census tracts in the school district
@@ -468,8 +495,8 @@ Row {data-height=350}
 
 ### Educational Attainment of Population 25 and Over
 
-```{r}
-census_education <- schoolreportr:::educational_attainment(state_abb, tracts_in_district$tracts_in_district, max(years))
+```{r educAttainment}
+census_education <- sr_rmd_get_educational_attainment(state_abb, tracts_in_district$GEOID)
 
 ed_order <- unique(census_education$variable)
 
@@ -477,5 +504,8 @@ census_education <- census_education |>
   mutate(variable = factor(variable, levels = ed_order)) |>
   arrange(variable)
 
-schoolreportr:::hc_plot_grouped_bar(census_education, 'variable', 'perc_demo', 'geography', "Educational attainment of community")
+sr_plot_grouped_bar(
+  census_education, 'variable', 'perc_demo', 'geography', 
+  x_var_title = NULL, y_var_title = 'Educational attainment of community', y_percentage = TRUE
+)
 ```

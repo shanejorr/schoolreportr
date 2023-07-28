@@ -9,7 +9,7 @@ sr_district_in_poverty(leaid, years)
 \arguments{
 \item{leaid}{The district's LEAID number, as a string.}
 
-\item{year}{The years from which you want to retrieve data. No data will be returned if data
+\item{years}{The years from which you want to retrieve data. No data will be returned if data
 is not available for the year. Use a vector of years to return data from
 multiple years.}
 }

@@ -12,7 +12,7 @@ sr_demographic_data(acs_variables, state_abb, tract_fips)
 \item{state_abb}{The two letter state abbreviation on the state that
 you want to show all schools for.}
 
-\item{tract_fips}{The fips code of teh census tracts that we want to get data for.}
+\item{tract_fips}{The fips code of the census tracts that we want to get data for.}
 }
 \description{
 Imports census tract and state-level demographic data from the ACS.

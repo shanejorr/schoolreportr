@@ -8,7 +8,7 @@
 #' @param acs_variables The variable names from teh ACS that we want to pull.
 #' @param state_abb The two letter state abbreviation on the state that
 #'      you want to show all schools for.
-#' @param tract_fips The fips code of teh census tracts that we want to get data for.
+#' @param tract_fips The fips code of the census tracts that we want to get data for.
 #'
 #' @export
 sr_demographic_data <- function(acs_variables, state_abb, tract_fips) {
@@ -64,11 +64,20 @@ sr_calculate_percentages <- function(.data) {
 
 #' Calculate educational attainment
 #'
-#' Pull in educational attainment data, combine educational levels, and calcualte the percentage
-#' of the populatin that has attained certain educational levels.
+#' Pull in educational attainment data, combine educational levels, and calculate the percentage
+#' of the population that has attained certain educational levels. Uses `tidycensus`
+#' to import education attainment data from the census ACS.
 #'
-#' @keywords internal
-educational_attainment <- function(state, tract_fips, year) {
+#' Helper function to create Rmarkdown report.
+#'
+#' @param state_abb The two letter state abbreviation on the state that
+#'      you want to show all schools for.
+#' @param tract_fips The fips code of the census tracts that we want to get data for.
+#'
+#' @export
+sr_rmd_get_educational_attainment <- function(state_abb, tract_fips) {
+
+  year <- max(sr_years_data_available('census'))
 
   # list of acs variables for educational attainment
   education_variables <- stringr::str_pad(1:25, width = 3, side = 'left', pad = '0')
@@ -77,7 +86,7 @@ educational_attainment <- function(state, tract_fips, year) {
   acs_vars <- tidycensus::load_variables(year, "acs5", cache = TRUE)
 
   # get county and state educational attainment numbers
-  education <- sr_demographic_data(education_variables, state, tract_fips)  |>
+  education <- sr_demographic_data(education_variables, state_abb, tract_fips)  |>
     dplyr::left_join(acs_vars[c('name', 'label')], by = c('variable' = 'name'))
 
   # re-bin educational attainment levels

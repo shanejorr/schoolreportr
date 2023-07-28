@@ -16,5 +16,5 @@ A data frame showing all schools in a state, along with key identifying informat
 \description{
 Returns a data frame of all schools in a state, along with their nces number, leaid,
 district, and address. This information is useful to find a school's nces number for
-use in \code{school_report()}.
+use in \code{\link[=sr_school_report]{sr_school_report()}}.
 }
