@@ -2,9 +2,9 @@ Package: schoolreportr
 Title: What the Package Does (One Line, Title Case)
 Version: 0.1.0
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
+    person("Shane", "Orr", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Description: Create html school reports for a given school or a group of schools within a district.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
