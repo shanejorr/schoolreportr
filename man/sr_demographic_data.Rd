@@ -7,7 +7,7 @@
 sr_demographic_data(acs_variables, state_abb, tract_fips)
 }
 \arguments{
-\item{acs_variables}{The variable names from teh ACS that we want to pull.}
+\item{acs_variables}{The variable names from the ACS that we want to pull.}
 
 \item{state_abb}{The two letter state abbreviation on the state that
 you want to show all schools for.}

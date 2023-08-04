@@ -25,13 +25,13 @@ knitr::opts_chunk$set(
 library(glue)
 library(dplyr)
 
-# years <- 2017:2020
-# org_level <- 'schools'
-# nces_num <- "050306000073"
-# state_abb <- 'AR'
-# grades <- 10:12
-# 
-# devtools::load_all()
+years <- 2017:2020
+org_level <- 'schools'
+nces_num <- "050306000073"
+state_abb <- 'AR'
+grades <- 10:12
+
+devtools::load_all()
 ```
 
 ```{r loadData, results = 'hide', include = FALSE, cache = FALSE}
@@ -331,6 +331,8 @@ all_year_plts[[1]]
 
 
 Row {data-height=400}
+
+## Reading State Assessments
 -----------------------------------------------------------------------
 
 ```{r plotAssessmentRaceClean}
@@ -377,6 +379,9 @@ all_years_race_total[[2]]
 
 
 Row {data-height=400}
+
+## Math State Assessments
+
 -----------------------------------------------------------------------
 
 ### School Math State Assessments by Race - Percent Passing
@@ -489,6 +494,42 @@ choropleths_tracts_by_race[[2]]
 ```{r choroplethTractWH}
 choropleths_tracts_by_race[[3]]
 ```
+
+Row {data-height=350}
+-------------------------------------
+
+### Median Income
+
+```{r medIncome}
+# need lsit of census variables for median income and education; pull it out so
+# it can be used in both
+var_year <- max(sr_years_data_available('census'))
+acs_vars <- tidycensus::load_variables(var_year, "acs5", cache = TRUE)
+
+census_education <- sr_rmd_get_educational_attainment(state_abb, tracts_in_district$GEOID)
+
+ed_order <- unique(census_education$variable)
+
+census_education <- census_education |>
+  mutate(variable = factor(variable, levels = ed_order)) |>
+  arrange(variable)
+
+sr_plot_grouped_bar(
+  census_education, 'variable', 'perc_demo', 'geography', 
+  x_var_title = NULL, y_var_title = 'Educational attainment of community', y_percentage = TRUE
+)
+```
+
+
+
+
+
+
+
+
+
+
+
 
 Row {data-height=350}
 -------------------------------------

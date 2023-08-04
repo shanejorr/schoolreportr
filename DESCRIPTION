@@ -2,7 +2,7 @@ Package: schoolreportr
 Title: What the Package Does (One Line, Title Case)
 Version: 0.1.0
 Authors@R: 
-    person("Shane", "Orr", role = c("aut", "cre"),
+    person("Shane", "Orr", , "shane.j.orr@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
 Description: Create html school reports for a given school or a group of schools within a district.
 License: MIT + file LICENSE
@@ -28,8 +28,7 @@ Imports:
     htmltools,
     rmarkdown,
     here,
-    fs,
-    cli
+    fs
 URL: https://github.com/shanejorr/schoolreportr
 BugReports: https://github.com/shanejorr/schoolreportr/issues
 Depends: 

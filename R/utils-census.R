@@ -5,7 +5,7 @@
 #' This is a helper function for creating the Rmarkdown file and has little application
 #' outside this file.
 #'
-#' @param acs_variables The variable names from teh ACS that we want to pull.
+#' @param acs_variables The variable names from the ACS that we want to pull.
 #' @param state_abb The two letter state abbreviation on the state that
 #'      you want to show all schools for.
 #' @param tract_fips The fips code of the census tracts that we want to get data for.
@@ -40,7 +40,7 @@ sr_demographic_data <- function(acs_variables, state_abb, tract_fips) {
 #' Calculates overall percentage demographics in a district and state given counts
 #' in all census tracts in a district and overall state counts. For example, calculates
 #' racial breakdown by percentage in the district by creating aggregate
-#' percentage for all census tracts in the district. Input data is created with `sr_demographic_data`.
+#' percentage for all census tracts in the district. Input data is created with [`sr_demographic_data()`].
 #'
 #' This is a helper function used to create the Rmarkdown report.
 #'
@@ -73,17 +73,16 @@ sr_calculate_percentages <- function(.data) {
 #' @param state_abb The two letter state abbreviation on the state that
 #'      you want to show all schools for.
 #' @param tract_fips The fips code of the census tracts that we want to get data for.
+#' @param acs_vars Data frame of ACS variables. Created with \code{\link[tidycensus]{load_variables}}.
 #'
 #' @export
-sr_rmd_get_educational_attainment <- function(state_abb, tract_fips) {
+sr_rmd_get_educational_attainment <- function(state_abb, tract_fips, acs_vars) {
 
-  year <- max(sr_years_data_available('census'))
+  max(sr_years_data_available('census'))
 
   # list of acs variables for educational attainment
   education_variables <- stringr::str_pad(1:25, width = 3, side = 'left', pad = '0')
   education_variables <- stringr::str_c('B15003_', education_variables)
-
-  acs_vars <- tidycensus::load_variables(year, "acs5", cache = TRUE)
 
   # get county and state educational attainment numbers
   education <- sr_demographic_data(education_variables, state_abb, tract_fips)  |>

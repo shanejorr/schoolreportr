@@ -121,9 +121,6 @@ sr_rmd_plot_choropleth_tracts_race <- function(.data, race, ...) {
 #' @export
 sr_plot_choropleth_tracts <- function(census_data_by_tract, tract_shapefile, school_location, tool_tip_labels) {
 
-  # centroid of district, used to center view of map
-  # district_centroid <- sf::st_centroid(district_shapefile$geometry)
-
   tract_shapefile |>
     dplyr::left_join(census_data_by_tract, by = c("GEOID")) |>
     sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |>
@@ -254,6 +251,57 @@ sr_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title = NUL
 
 }
 
+#' Bar chart
+#'
+#' Produces a highcharts bar chart. Since the data, axis, and grouping
+#' variables are parameters in the function, this function will work with any data.
+#' Use [`sr_plot_grouped_bar()`] for grouped bar chart.
+#'
+#' @param .data The data frame to plot.
+#' @param x_col The column name, as a string, of the plot's x-axis. Generally, this
+#'      will be a time variable such as years.
+#' @param y_col The column name, as a string, of the y-axis. If this column is a percentage,
+#'      it should be as a whole number (78.8) and not a decimal (.788).
+#' @param plt_title The plot title, as a string.
+#' @param x_var_title The x-axis title, as a string.
+#' @param y_var_title The y-axis title, as a string.
+#' @param y_percentage Boolean, signifying whether the y-axis is a percentage.
+#'      Defaults to `FALSE`.
+#'
+#' @export
+sr_plot_bar <- function(.data, x_col, y_col, plt_title = NULL,
+                                x_var_title = NULL, y_var_title = NULL, y_percentage = FALSE) {
+
+  if (y_percentage) {
+    tooltip_format <- "{point.y:,.0f}%"
+  } else {
+    tooltip_format <- "{point.y:,.0f}"
+  }
+
+  plt <- highcharter::hchart(
+    .data, "column",
+    highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]]),
+    tooltip = list(pointFormat = tooltip_format)
+  ) |>
+    highcharter::hc_title(text = plt_title) |>
+    highcharter::hc_xAxis(title = list(text = x_var_title)) |>
+    highcharter::hc_exporting(enabled = TRUE)
+
+  if (y_percentage) {
+
+    plt <- plt |>
+      sr_plot_percentage(y_var_title)
+
+  } else {
+
+    plt <- plt |> highcharter::hc_yAxis(title = list(text = y_var_title))
+
+  }
+
+  return(plt)
+
+}
+
 #' Grouped bar chart
 #'
 #' Produces a highcharts grouped bar chart. Since the data, axis, and grouping
@@ -276,10 +324,16 @@ sr_plot_grouped_line <- function(.data, x_col, y_col, group_col, plt_title = NUL
 sr_plot_grouped_bar <- function(.data, x_col, y_col, group_col, plt_title = NULL,
                                 x_var_title = NULL, y_var_title = NULL, y_percentage = FALSE) {
 
+  if (y_percentage) {
+    tooltip_format <- "<b>{series.name}:</b> {point.y:,.0f}%"
+  } else {
+    tooltip_format <- "<b>{series.name}:</b> {point.y:,.0f}"
+  }
+
   plt <- highcharter::hchart(
     .data, "column",
     highcharter::hcaes(x = .data[[x_col]], y = .data[[y_col]], group = .data[[group_col]]),
-    tooltip = list(pointFormat = "<b>{series.name}:</b> {point.y:,.0f}%")
+    tooltip = list(pointFormat = tooltip_format)
   ) |>
     highcharter::hc_title(text = plt_title) |>
     highcharter::hc_xAxis(title = list(text = x_var_title)) |>
@@ -311,8 +365,7 @@ sr_plot_percentage <- function(plt, y_var_title) {
       title = list(text = y_var_title),
       labels = list(format = '{value}%'),
       min = 0, max = 100
-    ) |>
-    highcharter::hc_exporting(enabled = TRUE)
+    )
 
 }
 

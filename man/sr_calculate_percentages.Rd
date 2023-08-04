@@ -14,7 +14,7 @@ be created with \code{sr_demographic_data}.}
 Calculates overall percentage demographics in a district and state given counts
 in all census tracts in a district and overall state counts. For example, calculates
 racial breakdown by percentage in the district by creating aggregate
-percentage for all census tracts in the district. Input data is created with \code{sr_demographic_data}.
+percentage for all census tracts in the district. Input data is created with \code{\link[=sr_demographic_data]{sr_demographic_data()}}.
 }
 \details{
 This is a helper function used to create the Rmarkdown report.
