@@ -113,7 +113,7 @@ prettify_grade <- function(grade) {
   grade <- as.character(grade)
   
   case_when(
-    grade == '-1' ~'Pre-K',
+    grade == '-1' ~ 'Pre-K',
     grade == '0' ~ 'K',
     .default = grade
   )
@@ -426,16 +426,26 @@ geoid_tracts_in_district <- tracts_in_district$GEOID
 
 ```{r censusRacialDemographic}
 
-race_popualtion_variables <- c(
-    B03002_001 = 'Total',
-    B03002_004 = 'Black / African-American', B03002_012 = 'Hispanic / Latinx',
-    B03002_003 = 'White', B03002_005 = 'American Indian or Alaska Native', B03002_006 = 'Asian',
-    B03002_007 = 'Native Hawaiian or other Pacific Islander',
-    B03002_010 = 'Two or more races', B03002_011 = 'Two or more races'
-)
-  
-census_demographics <- sr_demographic_data(names(race_popualtion_variables), state_abb, geoid_tracts_in_district)   |>
-    dplyr::mutate(variable = recode(variable, !!!race_popualtion_variables))
+race_population_variables <- c(
+  'B03002_001','B03002_004', 'B03002_012','B03002_003','B03002_005','B03002_006','B03002_007','B03002_010','B03002_011'
+  )
+
+census_demographics <- sr_demographic_data(race_population_variables, state_abb, geoid_tracts_in_district)   |>
+    dplyr::mutate(variable = case_match(
+      variable,
+      'B03002_001' ~ 'Total',
+      'B03002_004' ~ 'Black / African-American', 
+      'B03002_012' ~ 'Hispanic / Latinx',
+      'B03002_003' ~ 'White', 
+      'B03002_005' ~ 'American Indian or Alaska Native', 
+      'B03002_006' ~ 'Asian',
+      'B03002_007' ~ 'Native Hawaiian or other Pacific Islander',
+      'B03002_010' ~ 'Some Other', 
+      'B03002_011' ~ 'Two or more races'
+    ))
+
+# everything should have matched
+if (any(is.na(census_demographics$variable))) stop("Failed to properly match racial categories to census pop data", call. = FALSE)
 
 census_demographics_total <- census_demographics|>
   sr_calculate_percentages() |>
@@ -503,10 +513,10 @@ Row {data-height=350}
 ```{r medIncome}
 # need lsit of census variables for median income and education; pull it out so
 # it can be used in both
-var_year <- max(sr_years_data_available('census'))
-acs_vars <- tidycensus::load_variables(var_year, "acs5", cache = TRUE)
+#var_year <- max(sr_years_data_available('census'))
+#acs_vars <- tidycensus::load_variables(var_year, "acs5", cache = TRUE)
 
-census_education <- sr_rmd_get_educational_attainment(state_abb, tracts_in_district$GEOID)
+census_education <- sr_rmd_get_educational_attainment(state_abb, geoid_tracts_in_district)
 
 ed_order <- unique(census_education$variable)
 
@@ -537,7 +547,7 @@ Row {data-height=350}
 ### Educational Attainment of Population 25 and Over
 
 ```{r educAttainment}
-census_education <- sr_rmd_get_educational_attainment(state_abb, tracts_in_district$GEOID)
+census_education <- sr_rmd_get_educational_attainment(state_abb, geoid_tracts_in_district, acs_vars)
 
 ed_order <- unique(census_education$variable)
 

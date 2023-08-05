@@ -73,20 +73,16 @@ sr_calculate_percentages <- function(.data) {
 #' @param state_abb The two letter state abbreviation on the state that
 #'      you want to show all schools for.
 #' @param tract_fips The fips code of the census tracts that we want to get data for.
-#' @param acs_vars Data frame of ACS variables. Created with \code{\link[tidycensus]{load_variables}}.
 #'
 #' @export
-sr_rmd_get_educational_attainment <- function(state_abb, tract_fips, acs_vars) {
-
-  max(sr_years_data_available('census'))
+sr_rmd_get_educational_attainment <- function(state_abb, tract_fips) {
 
   # list of acs variables for educational attainment
   education_variables <- stringr::str_pad(1:25, width = 3, side = 'left', pad = '0')
   education_variables <- stringr::str_c('B15003_', education_variables)
 
   # get county and state educational attainment numbers
-  education <- sr_demographic_data(education_variables, state_abb, tract_fips)  |>
-    dplyr::left_join(acs_vars[c('name', 'label')], by = c('variable' = 'name'))
+  education <- sr_demographic_data(education_variables, state_abb, tract_fips)
 
   # re-bin educational attainment levels
   education |>
@@ -136,7 +132,7 @@ get_state_fips <- function(state_abbreviation) {
 #'
 #' Helper function that is used to create Rmarkdown file
 #'
-#' @param .data Data set containing imported census demographic data created with `sr_demographic_data`
+#' @param .data Data set containing imported census demographic data created with [`sr_demographic_data()`]
 #' @param races_to_use Races that we want to include in the data, as a vector of strings.
 #'
 #' @export

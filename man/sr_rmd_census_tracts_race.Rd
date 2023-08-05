@@ -7,7 +7,7 @@
 sr_rmd_census_tracts_race(.data, races_to_use)
 }
 \arguments{
-\item{.data}{Data set containing imported census demographic data created with \code{sr_demographic_data}}
+\item{.data}{Data set containing imported census demographic data created with \code{\link[=sr_demographic_data]{sr_demographic_data()}}}
 
 \item{races_to_use}{Races that we want to include in the data, as a vector of strings.}
 }

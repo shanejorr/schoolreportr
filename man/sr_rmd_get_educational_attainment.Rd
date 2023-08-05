@@ -4,15 +4,13 @@
 \alias{sr_rmd_get_educational_attainment}
 \title{Calculate educational attainment}
 \usage{
-sr_rmd_get_educational_attainment(state_abb, tract_fips, acs_vars)
+sr_rmd_get_educational_attainment(state_abb, tract_fips)
 }
 \arguments{
 \item{state_abb}{The two letter state abbreviation on the state that
 you want to show all schools for.}
 
 \item{tract_fips}{The fips code of the census tracts that we want to get data for.}
-
-\item{acs_vars}{Data frame of ACS variables. Created with \code{\link[tidycensus]{load_variables}}.}
 }
 \description{
 Pull in educational attainment data, combine educational levels, and calculate the percentage

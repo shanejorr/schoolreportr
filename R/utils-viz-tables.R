@@ -336,7 +336,10 @@ sr_plot_grouped_bar <- function(.data, x_col, y_col, group_col, plt_title = NULL
     tooltip = list(pointFormat = tooltip_format)
   ) |>
     highcharter::hc_title(text = plt_title) |>
-    highcharter::hc_xAxis(title = list(text = x_var_title)) |>
+    highcharter::hc_xAxis(
+      title = list(text = x_var_title),
+      categories = levels(.data[[x_col]])
+    ) |>
     highcharter::hc_exporting(enabled = TRUE)
 
   if (y_percentage) {
